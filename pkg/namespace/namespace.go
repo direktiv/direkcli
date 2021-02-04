@@ -1,140 +1,78 @@
 package namespace
 
 import (
-	"errors"
+	"context"
 	"fmt"
+	"time"
 
-	"github.com/segmentio/ksuid"
-	log "github.com/vorteil/direkcli/pkg/log"
-	"github.com/vorteil/direkcli/pkg/util"
-	"github.com/vorteil/direktiv/pkg/direktiv"
-	"github.com/vorteil/vorteil/pkg/elog"
+	"github.com/vorteil/direktiv/pkg/protocol"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/status"
 )
 
-var logger elog.View
+// List returns a list of namespaces on direktiv
+func List(conn *grpc.ClientConn) ([]*protocol.GetNamespacesResponse_Namespace, error) {
+	client := protocol.NewDirektivClient(conn)
+	defer conn.Close()
 
-func init() {
-	log := log.GetLogger()
-	logger = log
+	ctx := context.Background()
+	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
+	defer cancel()
+
+	request := protocol.GetNamespacesRequest{}
+
+	resp, err := client.GetNamespaces(ctx, &request)
+	if err != nil {
+		// convert the error
+		s := status.Convert(err)
+		return nil, fmt.Errorf("[%v] %v", s.Code(), s.Message())
+	}
+
+	return resp.Namespaces, nil
 }
 
-// List returns a list of namespaces
-func List() ([]direktiv.CmdGetNamespacesResponse, error) {
-	logger.Printf("Fetching namespaces...")
+// Delete deletes a namespace on direktiv
+func Delete(name string, conn *grpc.ClientConn) (string, error) {
+	client := protocol.NewDirektivClient(conn)
+	defer conn.Close()
 
-	// open nats
-	n, err := util.CreateNatsConnection("192.168.43.128:4222")
+	ctx := context.Background()
+	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
+	defer cancel()
+
+	request := protocol.DeleteNamespaceRequest{
+		Name: &name,
+	}
+
+	resp, err := client.DeleteNamespace(ctx, &request)
 	if err != nil {
-		return nil, err
-	}
-	defer n.Conn.Close()
-
-	var cmd direktiv.CmdRequest
-	cmd.CmdID = ksuid.New().String()
-	cmd.CmdType = direktiv.GetNamespaces
-
-	var da direktiv.CmdGetNamespaces
-	cmd.Cmd = da
-
-	// send request to direktiv
-	resp, err := n.DirektivRequest(direktiv.CmdSubscription, cmd.CmdID, cmd)
-	if err != nil {
-		return nil, err
+		// convert the error
+		s := status.Convert(err)
+		return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
 	}
 
-	// Check for response if error
-	if dirErr := util.CmdErrorCheck(resp); dirErr != nil {
-		return nil, errors.New(dirErr.Error)
-	}
-
-	if resp.CmdType == direktiv.OK {
-		// Response was successful :)
-		namespaces := make([]direktiv.CmdGetNamespacesResponse, 0)
-		if err := n.DirektivUnmarshal(resp, &namespaces); err != nil {
-			return nil, err
-		}
-		return namespaces, nil
-	}
-
-	return nil, errors.New("An unexpected error occurred")
+	return fmt.Sprintf("Deleted namespace: %s", resp.GetName()), nil
 }
 
-// Delete removes a namespace previously added
-func Delete(name string) (string, error) {
-	logger.Printf("Deleting namespace '%s'...", name)
+// Create creates a new namespace on direktiv
+func Create(name string, conn *grpc.ClientConn) (string, error) {
+	client := protocol.NewDirektivClient(conn)
+	defer conn.Close()
 
-	// open nats
-	n, err := util.CreateNatsConnection("192.168.43.128:4222")
+	ctx := context.Background()
+	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
+	defer cancel()
+
+	request := protocol.AddNamespaceRequest{
+		Name: &name,
+	}
+
+	resp, err := client.AddNamespace(ctx, &request)
 	if err != nil {
-		return "", err
-	}
-	defer n.Conn.Close()
-
-	// Delete namespace
-	var cmd direktiv.CmdRequest
-	cmd.CmdID = ksuid.New().String()
-	cmd.CmdType = direktiv.DeleteNamespace
-
-	var da direktiv.CmdAddDeleteNamespace
-	da.Name = name
-	cmd.Cmd = da
-
-	// Send Request to direktiv
-	resp, err := n.DirektivRequest(direktiv.CmdSubscription, cmd.CmdID, cmd)
-	if err != nil {
-		return "", err
+		// convert the error
+		s := status.Convert(err)
+		return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
 	}
 
-	// Check for response if error
-	if dirErr := util.CmdErrorCheck(resp); dirErr != nil {
-		return "", errors.New(dirErr.Error)
-	}
-
-	if resp.CmdType == direktiv.OK {
-		// Response was successful :)
-		return fmt.Sprintf("Namespace '%s' was successfully deleted.", name), nil
-	}
-
-	return "", errors.New("An unexpected error occurred")
-}
-
-// Create adds a new namespace and returns with a successful message or an error
-func Create(name string) (string, error) {
-	logger.Printf("Creating namespace '%s'...", name)
-
-	// Open nats
-	n, err := util.CreateNatsConnection("192.168.43.128:4222")
-	if err != nil {
-		return "", err
-	}
-	// Close nats at end of function
-	defer n.Conn.Close()
-
-	// Create namespace
-	// Construct direktiv request
-	var cmd direktiv.CmdRequest
-	cmd.CmdID = ksuid.New().String()
-	cmd.CmdType = direktiv.AddNamespace
-
-	var da direktiv.CmdAddDeleteNamespace
-	da.Name = name
-	cmd.Cmd = da
-
-	// Send request
-	resp, err := n.DirektivRequest(direktiv.CmdSubscription, cmd.CmdID, cmd)
-	if err != nil {
-		return "", err
-	}
-
-	// Check for response if error
-	if dirErr := util.CmdErrorCheck(resp); dirErr != nil {
-		return "", errors.New(dirErr.Error)
-	}
-
-	if resp.CmdType == direktiv.OK {
-		// Response was successful :)
-		return fmt.Sprintf("Namespace '%s' was successfully created.", name), nil
-	}
-
-	return "", errors.New("An unexpected error occurred")
+	return fmt.Sprintf("Created namespace: %s", resp.GetName()), nil
 }

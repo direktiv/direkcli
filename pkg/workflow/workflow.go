@@ -1,289 +1,202 @@
 package workflow
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"io/ioutil"
+	"time"
 
-	"github.com/segmentio/ksuid"
-	"github.com/vorteil/direkcli/pkg/log"
-	"github.com/vorteil/direkcli/pkg/util"
-	"github.com/vorteil/direktiv/pkg/direktiv"
-	"github.com/vorteil/vorteil/pkg/elog"
+	"github.com/vorteil/direktiv/pkg/protocol"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/status"
 )
 
-var logger elog.View
-
-func init() {
-	log := log.GetLogger()
-	logger = log
-}
-
 // List returns an array of workflows for a given namespace
-func List(namespace string) ([]direktiv.CmdGetWorkflowsResponse, error) {
-	logger.Printf("Fetching Workflow list...")
+func List(conn *grpc.ClientConn, namespace string) ([]*protocol.GetWorkflowsResponse_Workflow, error) {
+	client := protocol.NewDirektivClient(conn)
 
-	// open nats
-	n, err := util.CreateNatsConnection("192.168.43.128:4222")
+	ctx := context.Background()
+	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
+	defer cancel()
+
+	request := protocol.GetWorkflowsRequest{
+		Namespace: &namespace,
+	}
+
+	resp, err := client.GetWorkflows(ctx, &request)
 	if err != nil {
-		return nil, err
+		// convert the error
+		s := status.Convert(err)
+		return nil, fmt.Errorf("[%v] %v", s.Code(), s.Message())
 	}
 
-	defer n.Conn.Close()
-
-	var cmd direktiv.CmdRequest
-	cmd.CmdID = ksuid.New().String()
-	cmd.CmdType = direktiv.GetWorkflows
-
-	var da direktiv.CmdGetWorkflows
-	da.Namespace = namespace
-	cmd.Cmd = da
-
-	resp, err := n.DirektivRequest(direktiv.CmdSubscription, cmd.CmdID, cmd)
-	if err != nil {
-		return nil, err
-	}
-
-	// Check for response if error
-	if dirErr := util.CmdErrorCheck(resp); dirErr != nil {
-		return nil, errors.New(dirErr.Error)
-	}
-
-	if resp.CmdType == direktiv.OK {
-		// Response was successful :)
-		workflows := make([]direktiv.CmdGetWorkflowsResponse, 0)
-		if err := n.DirektivUnmarshal(resp, &workflows); err != nil {
-			return nil, err
-		}
-		return workflows, nil
-	}
-
-	return nil, errors.New("An unexpected error occurred")
+	return resp.Workflows, nil
 }
 
-// Execute runs the yaml provided from the workflow
-func Execute(input string, id, namespace string) (string, error) {
-	logger.Printf("Executing workflow '%s'...", id)
-	var err error
-	b := []byte{}
+// // Execute runs the yaml provided from the workflow
+func Execute(conn *grpc.ClientConn, namespace string, id string, input string) (string, error) {
+	client := protocol.NewDirektivClient(conn)
 
-	// if provided input read file
+	ctx := context.Background()
+	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
+	defer cancel()
+
+	var err error
+	var b []byte
 	if input != "" {
-		// read input for workflow
 		b, err = ioutil.ReadFile(input)
 		if err != nil {
 			return "", err
 		}
 	}
 
-	// open nats
-	n, err := util.CreateNatsConnection("192.168.43.128:4222")
+	request := protocol.InvokeWorkflowRequest{
+		Namespace:  &namespace,
+		Input:      b,
+		WorkflowId: &id,
+	}
+
+	resp, err := client.InvokeWorkflow(ctx, &request)
 	if err != nil {
-		return "", err
+		s := status.Convert(err)
+		return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
 	}
 
-	defer n.Conn.Close()
-	var cmd direktiv.CmdRequest
-	cmd.CmdID = ksuid.New().String()
-	cmd.CmdType = direktiv.InvokeWorkflow
+	return fmt.Sprintf("Successfully invoked, Instance ID: %s", resp.GetInstanceId()), nil
+}
 
-	var da direktiv.CmdInvokeWorkflow
-	da.Workflow = id
-	da.Namespace = namespace
-	da.Data = b
+// getWorkflowUid returns uid of workflow so we can update/delete things related to it
+func getWorkflowUid(conn *grpc.ClientConn, namespace, id string) (string, error) {
+	client := protocol.NewDirektivClient(conn)
 
-	cmd.Cmd = da
+	ctx := context.Background()
+	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
+	defer cancel()
 
-	resp, err := n.DirektivRequest(direktiv.CmdSubscription, cmd.CmdID, cmd)
+	request := protocol.GetWorkflowByIdRequest{
+		Namespace: &namespace,
+		Id:        &id,
+	}
+
+	resp, err := client.GetWorkflowById(ctx, &request)
 	if err != nil {
-		return "", err
+		// convert the error
+		s := status.Convert(err)
+		return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
 	}
-
-	// Check for response if error
-	if dirErr := util.CmdErrorCheck(resp); dirErr != nil {
-		return "", errors.New(dirErr.Error)
-	}
-
-	if resp.CmdType == direktiv.OK {
-		dWorkflow := new(direktiv.CmdInvokeWorkflowResponse)
-		if err := n.DirektivUnmarshal(resp, &dWorkflow); err != nil {
-			return "", err
-		}
-		return string(dWorkflow.InstanceID), nil
-	}
-
-	return "", errors.New("An unexpected error occurred")
-
+	return resp.GetUid(), nil
 }
 
 // Get returns the YAML contents of the workflow
-func Get(id string, namespace string) (string, error) {
-	logger.Printf("Fetching YAML workflow '%s'...", id)
+func Get(conn *grpc.ClientConn, namespace string, id string) (string, error) {
+	client := protocol.NewDirektivClient(conn)
+	defer conn.Close()
 
-	// open nats
-	n, err := util.CreateNatsConnection("192.168.43.128:4222")
+	ctx := context.Background()
+	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
+	defer cancel()
+
+	request := protocol.GetWorkflowByIdRequest{
+		Namespace: &namespace,
+		Id:        &id,
+	}
+
+	resp, err := client.GetWorkflowById(ctx, &request)
 	if err != nil {
-		return "", err
+		// convert the error
+		s := status.Convert(err)
+		return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
 	}
 
-	defer n.Conn.Close()
-	var cmd direktiv.CmdRequest
-	cmd.CmdID = ksuid.New().String()
-
-	var da direktiv.CmdGetWorkflow
-
-	cmd.CmdType = direktiv.GetWorkflow
-	da.ID = id
-	cmd.Cmd = da
-
-	resp, err := n.DirektivRequest(direktiv.CmdSubscription, cmd.CmdID, cmd)
-	if err != nil {
-		return "", err
-	}
-
-	// Check for response if error
-	if dirErr := util.CmdErrorCheck(resp); dirErr != nil {
-		return "", errors.New(dirErr.Error)
-	}
-
-	if resp.CmdType == direktiv.OK {
-		dWorkflow := new(direktiv.CmdGetWorkflowResponse)
-		if err := n.DirektivUnmarshal(resp, &dWorkflow); err != nil {
-			return "", err
-		}
-		return string(dWorkflow.Workflow), nil
-	}
-
-	return "", errors.New("An unexpected error occurred")
+	return string(resp.GetWorkflow()), nil
 }
 
 // Update updates a workflow from the provided id
-func Update(filepath string, id string, namespace string) (string, error) {
-	logger.Printf("Updating Workflow '%s'...", id)
+func Update(conn *grpc.ClientConn, namespace string, id string, filepath string) (string, error) {
+	client := protocol.NewDirektivClient(conn)
+	defer conn.Close()
 
-	// open nats
-	n, err := util.CreateNatsConnection("192.168.43.128:4222")
+	ctx := context.Background()
+	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
+	defer cancel()
+
+	b, err := ioutil.ReadFile(filepath)
 	if err != nil {
 		return "", err
 	}
 
-	defer n.Conn.Close()
-
-	data, err := ioutil.ReadFile(filepath)
+	uid, err := getWorkflowUid(conn, namespace, id)
 	if err != nil {
 		return "", err
 	}
 
-	var cmd direktiv.CmdRequest
-	cmd.CmdID = ksuid.New().String()
-	cmd.CmdType = direktiv.UpdateWorkflow
+	request := protocol.UpdateWorkflowRequest{
+		Uid:      &uid,
+		Workflow: b,
+	}
 
-	var da direktiv.CmdUpdateWorkflow
-	da.ID = id
-	da.Workflow = data
-	da.Active = true
-
-	cmd.Cmd = da
-
-	resp, err := n.DirektivRequest(direktiv.CmdSubscription, cmd.CmdID, cmd)
+	resp, err := client.UpdateWorkflow(ctx, &request)
 	if err != nil {
-		return "", err
+		// convert the error
+		s := status.Convert(err)
+		return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
 	}
 
-	// Check for response if error
-	if dirErr := util.CmdErrorCheck(resp); dirErr != nil {
-		return "", errors.New(dirErr.Error)
-	}
-
-	if resp.CmdType == direktiv.OK {
-		return fmt.Sprintf("Successfully updated '%s'", resp.Cmd.(string)), nil
-	}
-
-	return "", errors.New("An unexpected error occurred")
+	return fmt.Sprintf("Successfully updated '%s'", resp.GetId()), nil
 }
 
 // Delete removes a workflow
-func Delete(id, namespace string) (string, error) {
-	logger.Printf("Deleting workflow '%s'...", id)
+func Delete(conn *grpc.ClientConn, namespace, id string) (string, error) {
+	client := protocol.NewDirektivClient(conn)
+	defer conn.Close()
 
-	// Open nats
-	n, err := util.CreateNatsConnection("192.168.43.128:4222")
-	if err != nil {
-		return "", err
-	}
-	// Close nats at end of function
-	defer n.Conn.Close()
+	ctx := context.Background()
+	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
+	defer cancel()
 
-	var cmd direktiv.CmdRequest
-
-	cmd.CmdID = ksuid.New().String()
-	cmd.CmdType = direktiv.DeleteWorkflow
-
-	var da direktiv.CmdDeleteWorkflow
-	da.ID = id
-
-	cmd.Cmd = da
-
-	resp, err := n.DirektivRequest(direktiv.CmdSubscription, id, cmd)
+	uid, err := getWorkflowUid(conn, namespace, id)
 	if err != nil {
 		return "", err
 	}
 
-	// Check for response if error
-	if dirErr := util.CmdErrorCheck(resp); dirErr != nil {
-		return "", errors.New(dirErr.Error)
+	request := protocol.DeleteWorkflowRequest{
+		Uid: &uid,
 	}
 
-	if resp.CmdType == direktiv.OK {
-		return resp.Cmd.(string), nil
+	_, err = client.DeleteWorkflow(ctx, &request)
+	if err != nil {
+		// convert the error
+		s := status.Convert(err)
+		return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
 	}
 
-	return "", errors.New("An unexpected error occurred")
+	return fmt.Sprintf("Deleted workflow '%v'", id), nil
 }
 
 // Add creates a new workflow on a namespace
-func Add(filepath string, namespace string) (string, error) {
-	logger.Printf("Adding Workflow...")
+func Add(conn *grpc.ClientConn, namespace string, filepath string) (string, error) {
+	client := protocol.NewDirektivClient(conn)
+	defer conn.Close()
 
-	// Open nats
-	n, err := util.CreateNatsConnection("192.168.43.128:4222")
+	ctx := context.Background()
+	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
+	defer cancel()
+
+	b, err := ioutil.ReadFile(filepath)
 	if err != nil {
 		return "", err
 	}
-	// Close nats at end of function
-	defer n.Conn.Close()
+	request := protocol.AddWorkflowRequest{
+		Namespace: &namespace,
+		Workflow:  b,
+	}
 
-	data, err := ioutil.ReadFile(filepath)
+	resp, err := client.AddWorkflow(ctx, &request)
 	if err != nil {
-		return "", err
+		// convert the error
+		s := status.Convert(err)
+		return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
 	}
 
-	var id = ksuid.New().String()
-	var cmd direktiv.CmdRequest
-	cmd.CmdID = id
-	cmd.CmdType = direktiv.AddWorkflow
-
-	var da direktiv.CmdAddWorkflow
-	da.Namespace = namespace
-	da.Active = true
-	da.Workflow = data
-
-	cmd.Cmd = da
-
-	resp, err := n.DirektivRequest(direktiv.CmdSubscription, id, cmd)
-	if err != nil {
-		return "", err
-	}
-
-	// Check for response if error
-	if dirErr := util.CmdErrorCheck(resp); dirErr != nil {
-		return "", errors.New(dirErr.Error)
-	}
-
-	if resp.CmdType == direktiv.OK {
-		return resp.Cmd.(string), nil
-	}
-
-	return "", errors.New("An unexpected error occurred")
-
+	return fmt.Sprintf("Created workflow '%s'", resp.GetId()), nil
 }

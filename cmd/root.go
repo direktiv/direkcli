@@ -16,6 +16,7 @@ limitations under the License.
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -26,65 +27,77 @@ import (
 	"github.com/vorteil/direkcli/pkg/namespace"
 	"github.com/vorteil/direkcli/pkg/workflow"
 	"github.com/vorteil/vorteil/pkg/elog"
+	"google.golang.org/grpc"
 )
 
 var flagNamespace string
 var flagInputFile string
+var flagGRPC string
 
+var conn *grpc.ClientConn
 var logger elog.View
+
+const grpcConnection = "127.0.0.1:6666"
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "direkcli",
-	Short: "A cli for direktiv that talks directly to nats",
+	Short: "A cli for direktiv that talks directly a grpc server direktiv hosts",
 	Long:  ``,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		logger = log.GetLogger()
+		var err error
+		connF, err := cmd.Flags().GetString("grpc")
+		if err != nil {
+			return err
+		}
+
+		if connF == "" {
+			connF = grpcConnection
+		}
+
+		conn, err = grpc.Dial(connF, grpc.WithInsecure())
+		if err != nil {
+			return err
+		}
+
 		return nil
 	},
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	//	Run: func(cmd *cobra.Command, args []string) { },
 }
 
 // namespaceCmd
 var namespaceCmd = &cobra.Command{
-	Use:   "namespace",
-	Short: "Manage namespaces",
+	Use:   "namespaces",
+	Short: "List, Create and Delete namespaces",
 	Long:  ``,
 }
 
 // namespaceListCmd
 var namespaceListCmd = &cobra.Command{
 	Use:   "list",
-	Short: "Lists namespaces",
+	Short: "Returns a list of namespaces",
 	Long:  ``,
 	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
-		namespaces, err := namespace.List()
+
+		list, err := namespace.List(conn)
 		if err != nil {
-			logger.Errorf("Error listing namespaces: %s", err.Error())
+			logger.Errorf("%s", err.Error())
+			os.Exit(1)
 		}
-
-		if len(namespaces) == 0 {
-			logger.Printf("No namespaces are running on this direktiv")
-			return
+		if len(list) == 0 {
+			logger.Printf("No namespaces exist")
 		}
-
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"Name", "Created"})
+		table.SetHeader([]string{"Name"})
 
-		// Build string array rows
-		for _, namespace := range namespaces {
-			timeString := namespace.Created.Format("15:04 02-01-06")
+		for _, namespace := range list {
 			table.Append([]string{
-				namespace.Name,
-				timeString,
+				namespace.GetName(),
 			})
 		}
 
 		table.Render()
-
 	},
 }
 
@@ -95,9 +108,9 @@ var namespaceCreateCmd = &cobra.Command{
 	Long:  ``,
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		success, err := namespace.Create(args[0])
+		success, err := namespace.Create(args[0], conn)
 		if err != nil {
-			logger.Errorf("Error creating namespace: %s", err.Error())
+			logger.Errorf("%s", err.Error())
 			os.Exit(1)
 		}
 		logger.Printf(success)
@@ -111,9 +124,9 @@ var namespaceDeleteCmd = &cobra.Command{
 	Long:  ``,
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		success, err := namespace.Delete(args[0])
+		success, err := namespace.Delete(args[0], conn)
 		if err != nil {
-			logger.Errorf("Error deleting namespace: %s", err.Error())
+			logger.Errorf("%s", err.Error())
 			os.Exit(1)
 		}
 		logger.Printf(success)
@@ -122,91 +135,63 @@ var namespaceDeleteCmd = &cobra.Command{
 
 // workflowCmd
 var workflowCmd = &cobra.Command{
-	Use:   "workflow",
-	Short: "Manage workflows",
+	Use:   "workflows",
+	Short: "List, Create, Get and Execute workflows",
 	Long:  ``,
 }
 
 // workflowListCmd
 var workflowListCmd = &cobra.Command{
-	Use:   `list`,
+	Use:   `list [NAMESPACE]`,
 	Short: "Lists all workflows under a namespace",
-	Args:  cobra.ExactArgs(0),
+	Args:  cobra.ExactArgs(1),
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		namespace, err := cmd.Flags().GetString("namespace")
-		if err != nil {
-			logger.Errorf("unable to retrieve namespace flag")
-			os.Exit(1)
-		}
 
-		if namespace == "" {
-			logger.Errorf("--namespace flag is required to use workflow commands")
-			os.Exit(1)
-		}
-
-		list, err := workflow.List(namespace)
+		list, err := workflow.List(conn, args[0])
 		if err != nil {
 			logger.Errorf(err.Error())
 			os.Exit(1)
 		}
 
 		if len(list) == 0 {
-			logger.Printf("No workflows are under %s", namespace)
-			return
+			logger.Printf("No workflows exist under '%s'", args[0])
 		}
 
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"ID", "Name", "Description", "Created"})
+		table.SetHeader([]string{"ID"})
 
 		// Build string array rows
 		for _, wf := range list {
-			timeString := wf.Created.Format("15:04 02-01-06")
 			table.Append([]string{
-				wf.ID,
-				wf.Name,
-				wf.Description,
-				timeString,
+				wf.GetId(),
 			})
 		}
-
 		table.Render()
 	},
 }
 
 // workflowGetCmd
 var workflowGetCmd = &cobra.Command{
-	Use:   "get [ID]",
+	Use:   "get [NAMESPACE] [ID]",
 	Short: "Get yaml from a workflow",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.ExactArgs(2),
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		namespace, err := cmd.Flags().GetString("namespace")
-		if err != nil {
-			logger.Errorf("unable to retrieve namespace flag")
-			os.Exit(1)
-		}
-
-		if namespace == "" {
-			logger.Errorf("--namespace flag is required to use workflow commands")
-			os.Exit(1)
-		}
-
-		success, err := workflow.Get(args[0], namespace)
+		success, err := workflow.Get(conn, args[0], args[1])
 		if err != nil {
 			logger.Errorf(err.Error())
 			os.Exit(1)
 		}
-
 		logger.Printf(success)
 	},
 }
 
 // workflowExecuteCmd
 var workflowExecuteCmd = &cobra.Command{
-	Use:   "execute [ID]",
+	Use:   "execute [NAMESPACE] [ID]",
 	Short: "Executes workflow with given ID",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.ExactArgs(2),
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
 		input, err := cmd.Flags().GetString("input")
@@ -215,72 +200,7 @@ var workflowExecuteCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		namespace, err := cmd.Flags().GetString("namespace")
-		if err != nil {
-			logger.Errorf("unable to retrieve namespace flag")
-			os.Exit(1)
-		}
-		if namespace == "" {
-			logger.Errorf("--namespace flag is required to use workflow commands")
-			os.Exit(1)
-		}
-
-		instanceID, err := workflow.Execute(input, args[0], namespace)
-		if err != nil {
-			logger.Errorf(err.Error())
-			os.Exit(1)
-		}
-
-		logger.Printf("Instance ID of executed workflow '%s'", instanceID)
-	},
-}
-
-// workflowAddCmd
-var workflowAddCmd = &cobra.Command{
-	Use:   "add [WORKFLOW]",
-	Short: "Adds a new workflow",
-	Args:  cobra.ExactArgs(1),
-	Long:  ``,
-	Run: func(cmd *cobra.Command, args []string) {
-		namespace, err := cmd.Flags().GetString("namespace")
-		if err != nil {
-			logger.Errorf("unable to retrieve namespace flag")
-			os.Exit(1)
-		}
-
-		if namespace == "" {
-			logger.Errorf("--namespace flag is required to use workflow commands")
-			os.Exit(1)
-		}
-
-		workflowID, err := workflow.Add(args[0], namespace)
-		if err != nil {
-			logger.Errorf(err.Error())
-			os.Exit(1)
-		}
-
-		logger.Printf("Successfully created workflow '%s' under namespace '%s'", workflowID, namespace)
-	},
-}
-
-// workflowUpdateCmd
-var workflowUpdateCmd = &cobra.Command{
-	Use:   "update [WORKFLOW] [ID]",
-	Short: "Updates an existing workflow",
-	Args:  cobra.ExactArgs(2),
-	Long:  ``,
-	Run: func(cmd *cobra.Command, args []string) {
-		namespace, err := cmd.Flags().GetString("namespace")
-		if err != nil {
-			logger.Errorf("unable to retriee namespace flag")
-		}
-
-		if namespace == "" {
-			logger.Errorf("--namespace flag is required to use workflow commands")
-			os.Exit(1)
-		}
-
-		success, err := workflow.Update(args[0], args[1], namespace)
+		success, err := workflow.Execute(conn, args[0], args[1], input)
 		if err != nil {
 			logger.Errorf(err.Error())
 			os.Exit(1)
@@ -290,36 +210,58 @@ var workflowUpdateCmd = &cobra.Command{
 	},
 }
 
-// workflowDeleteCmd
-var workflowDeleteCmd = &cobra.Command{
-	Use:   "delete [ID]",
-	Short: "Deletes an existing workflow",
-	Args:  cobra.ExactArgs(1),
+// workflowAddCmd
+var workflowAddCmd = &cobra.Command{
+	Use:   "add [NAMESPACE] [WORKFLOW]",
+	Short: "Adds a new workflow",
+	Args:  cobra.ExactArgs(2),
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		namespace, err := cmd.Flags().GetString("namespace")
-		if err != nil {
-			logger.Errorf("unable to retrieve namespace flag")
-		}
-
-		if namespace == "" {
-			logger.Errorf("--namespace flag is required to use workflow commands")
-			os.Exit(1)
-		}
-
-		id, err := workflow.Delete(args[0], namespace)
+		// args[0] should be namespace, args[1] should be path to the workflow file
+		success, err := workflow.Add(conn, args[0], args[1])
 		if err != nil {
 			logger.Errorf(err.Error())
 			os.Exit(1)
 		}
+		logger.Printf(success)
+	},
+}
 
-		logger.Printf("Sucessfully deleted workflow '%s' under namespace '%s'", id, namespace)
+// workflowUpdateCmd
+var workflowUpdateCmd = &cobra.Command{
+	Use:   "update [NAMESPACE] [ID] [WORKFLOW]",
+	Short: "Updates an existing workflow",
+	Args:  cobra.ExactArgs(3),
+	Long:  ``,
+	Run: func(cmd *cobra.Command, args []string) {
+		success, err := workflow.Update(conn, args[0], args[1], args[2])
+		if err != nil {
+			logger.Errorf(err.Error())
+			os.Exit(1)
+		}
+		logger.Printf(success)
+	},
+}
+
+// workflowDeleteCmd
+var workflowDeleteCmd = &cobra.Command{
+	Use:   "delete [NAMESPACE] [ID]",
+	Short: "Deletes an existing workflow",
+	Args:  cobra.ExactArgs(2),
+	Long:  ``,
+	Run: func(cmd *cobra.Command, args []string) {
+		success, err := workflow.Delete(conn, args[0], args[1])
+		if err != nil {
+			logger.Errorf(err.Error())
+			os.Exit(1)
+		}
+		logger.Printf(success)
 	},
 }
 
 // instanceCmd
 var instanceCmd = &cobra.Command{
-	Use:   "instance",
+	Use:   "instances",
 	Short: "Manage instances",
 	Long:  ``,
 }
@@ -330,14 +272,17 @@ var instanceGetCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-
-		wfinstance, err := instance.Get(args[0])
+		resp, err := instance.Get(conn, args[0])
 		if err != nil {
 			logger.Errorf(err.Error())
 			os.Exit(1)
 		}
-
-		logger.Printf("%s", wfinstance)
+		b, err := json.MarshalIndent(resp, "", "    ")
+		if err != nil {
+			logger.Errorf(err.Error())
+			os.Exit(1)
+		}
+		logger.Printf("%s", string(b))
 	},
 }
 
@@ -347,56 +292,43 @@ var instanceLogsCmd = &cobra.Command{
 	Long:  ``,
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		logs, err := instance.Logs(args[0])
+		logs, err := instance.Logs(conn, args[0])
 		if err != nil {
 			logger.Errorf(err.Error())
 			os.Exit(1)
 		}
-
-		logger.Printf("%s", logs)
+		for _, log := range logs {
+			fmt.Printf("%s", log.GetMessage())
+		}
 	},
 }
+
 var instanceListCmd = &cobra.Command{
-	Use:   "list",
+	Use:   "list [NAMESPACE]",
 	Short: "List all workflow instances in a namespace",
 	Long:  ``,
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		namespace, err := cmd.Flags().GetString("namespace")
-		if err != nil {
-			logger.Errorf("unable to retrieve namespace flag")
-		}
-
-		if namespace == "" {
-			logger.Errorf("--namespace flag is required to use workflow commands")
-			os.Exit(1)
-		}
-
-		list, err := instance.List(namespace)
+		list, err := instance.List(conn, args[0])
 		if err != nil {
 			logger.Errorf(err.Error())
 			os.Exit(1)
 		}
 
 		if len(list) == 0 {
-			logger.Printf("No workflow instances are under %s", namespace)
-			return
+			logger.Printf("No instances exist under '%s'", args[0])
 		}
-
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"Name", "Status", "Created"})
+		table.SetHeader([]string{"ID", "Status"})
 
 		// Build string array rows
-		for _, wf := range list {
-			timeString := wf.Created.Format("15:04 02-01-06")
+		for _, instance := range list {
 			table.Append([]string{
-				wf.Name,
-				wf.Status,
-				timeString,
+				instance.GetId(),
+				instance.GetStatus(),
 			})
 		}
-
 		table.Render()
-
 	},
 }
 
@@ -427,11 +359,6 @@ func Execute() {
 	rootCmd.AddCommand(workflowCmd)
 	rootCmd.AddCommand(instanceCmd)
 
-	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-		logger = log.GetLogger()
-		return nil
-	}
-
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -439,10 +366,8 @@ func Execute() {
 }
 
 func init() {
-	// instanceCmd flags
-	instanceListCmd.PersistentFlags().StringVarP(&flagNamespace, "namespace", "", "", "defines the namespace to use for queries")
+	rootCmd.PersistentFlags().StringVarP(&flagGRPC, "grpc", "", "", "ip and port for connection GRPC default is 127.0.0.1:6666")
 
 	// workflowCmd add flag for the namespace
-	workflowCmd.PersistentFlags().StringVarP(&flagNamespace, "namespace", "", "", "defines the namespace to use for queries")
 	workflowExecuteCmd.PersistentFlags().StringVarP(&flagInputFile, "input", "", "", "filepath to json input")
 }
