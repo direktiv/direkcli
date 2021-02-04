@@ -16,7 +16,6 @@ limitations under the License.
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 
@@ -277,12 +276,9 @@ var instanceGetCmd = &cobra.Command{
 			logger.Errorf(err.Error())
 			os.Exit(1)
 		}
-		b, err := json.MarshalIndent(resp, "", "    ")
-		if err != nil {
-			logger.Errorf(err.Error())
-			os.Exit(1)
-		}
-		logger.Printf("%s", string(b))
+		logger.Printf("ID: %s", resp.GetId())
+		logger.Printf("Input: %s", string(resp.GetInput()))
+		logger.Printf("Output: %s", string(resp.GetOutput()))
 	},
 }
 
