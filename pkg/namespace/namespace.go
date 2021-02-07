@@ -5,21 +5,21 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/vorteil/direktiv/pkg/protocol"
+	"github.com/vorteil/direktiv/pkg/ingress"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
 )
 
 // List returns a list of namespaces on direktiv
-func List(conn *grpc.ClientConn) ([]*protocol.GetNamespacesResponse_Namespace, error) {
-	client := protocol.NewDirektivClient(conn)
+func List(conn *grpc.ClientConn) ([]*ingress.GetNamespacesResponse_Namespace, error) {
+	client := ingress.NewDirektivIngressClient(conn)
 	defer conn.Close()
 
 	ctx := context.Background()
 	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
 	defer cancel()
 
-	request := protocol.GetNamespacesRequest{}
+	request := ingress.GetNamespacesRequest{}
 
 	resp, err := client.GetNamespaces(ctx, &request)
 	if err != nil {
@@ -33,14 +33,14 @@ func List(conn *grpc.ClientConn) ([]*protocol.GetNamespacesResponse_Namespace, e
 
 // Delete deletes a namespace on direktiv
 func Delete(name string, conn *grpc.ClientConn) (string, error) {
-	client := protocol.NewDirektivClient(conn)
+	client := ingress.NewDirektivIngressClient(conn)
 	defer conn.Close()
 
 	ctx := context.Background()
 	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
 	defer cancel()
 
-	request := protocol.DeleteNamespaceRequest{
+	request := ingress.DeleteNamespaceRequest{
 		Name: &name,
 	}
 
@@ -56,14 +56,14 @@ func Delete(name string, conn *grpc.ClientConn) (string, error) {
 
 // Create creates a new namespace on direktiv
 func Create(name string, conn *grpc.ClientConn) (string, error) {
-	client := protocol.NewDirektivClient(conn)
+	client := ingress.NewDirektivIngressClient(conn)
 	defer conn.Close()
 
 	ctx := context.Background()
 	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
 	defer cancel()
 
-	request := protocol.AddNamespaceRequest{
+	request := ingress.AddNamespaceRequest{
 		Name: &name,
 	}
 

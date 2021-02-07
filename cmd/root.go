@@ -261,7 +261,7 @@ var workflowDeleteCmd = &cobra.Command{
 // instanceCmd
 var instanceCmd = &cobra.Command{
 	Use:   "instances",
-	Short: "Manage instances",
+	Short: "List, Get and Retrieve Logs for instances",
 	Long:  ``,
 }
 

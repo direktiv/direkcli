@@ -6,20 +6,20 @@ import (
 	"io/ioutil"
 	"time"
 
-	"github.com/vorteil/direktiv/pkg/protocol"
+	"github.com/vorteil/direktiv/pkg/ingress"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
 )
 
 // List returns an array of workflows for a given namespace
-func List(conn *grpc.ClientConn, namespace string) ([]*protocol.GetWorkflowsResponse_Workflow, error) {
-	client := protocol.NewDirektivClient(conn)
+func List(conn *grpc.ClientConn, namespace string) ([]*ingress.GetWorkflowsResponse_Workflow, error) {
+	client := ingress.NewDirektivIngressClient(conn)
 
 	ctx := context.Background()
 	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
 	defer cancel()
 
-	request := protocol.GetWorkflowsRequest{
+	request := ingress.GetWorkflowsRequest{
 		Namespace: &namespace,
 	}
 
@@ -35,7 +35,7 @@ func List(conn *grpc.ClientConn, namespace string) ([]*protocol.GetWorkflowsResp
 
 // // Execute runs the yaml provided from the workflow
 func Execute(conn *grpc.ClientConn, namespace string, id string, input string) (string, error) {
-	client := protocol.NewDirektivClient(conn)
+	client := ingress.NewDirektivIngressClient(conn)
 
 	ctx := context.Background()
 	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
@@ -50,7 +50,7 @@ func Execute(conn *grpc.ClientConn, namespace string, id string, input string) (
 		}
 	}
 
-	request := protocol.InvokeWorkflowRequest{
+	request := ingress.InvokeWorkflowRequest{
 		Namespace:  &namespace,
 		Input:      b,
 		WorkflowId: &id,
@@ -67,13 +67,13 @@ func Execute(conn *grpc.ClientConn, namespace string, id string, input string) (
 
 // getWorkflowUid returns uid of workflow so we can update/delete things related to it
 func getWorkflowUid(conn *grpc.ClientConn, namespace, id string) (string, error) {
-	client := protocol.NewDirektivClient(conn)
+	client := ingress.NewDirektivIngressClient(conn)
 
 	ctx := context.Background()
 	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
 	defer cancel()
 
-	request := protocol.GetWorkflowByIdRequest{
+	request := ingress.GetWorkflowByIdRequest{
 		Namespace: &namespace,
 		Id:        &id,
 	}
@@ -89,14 +89,14 @@ func getWorkflowUid(conn *grpc.ClientConn, namespace, id string) (string, error)
 
 // Get returns the YAML contents of the workflow
 func Get(conn *grpc.ClientConn, namespace string, id string) (string, error) {
-	client := protocol.NewDirektivClient(conn)
+	client := ingress.NewDirektivIngressClient(conn)
 	defer conn.Close()
 
 	ctx := context.Background()
 	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
 	defer cancel()
 
-	request := protocol.GetWorkflowByIdRequest{
+	request := ingress.GetWorkflowByIdRequest{
 		Namespace: &namespace,
 		Id:        &id,
 	}
@@ -113,7 +113,7 @@ func Get(conn *grpc.ClientConn, namespace string, id string) (string, error) {
 
 // Update updates a workflow from the provided id
 func Update(conn *grpc.ClientConn, namespace string, id string, filepath string) (string, error) {
-	client := protocol.NewDirektivClient(conn)
+	client := ingress.NewDirektivIngressClient(conn)
 	defer conn.Close()
 
 	ctx := context.Background()
@@ -130,7 +130,7 @@ func Update(conn *grpc.ClientConn, namespace string, id string, filepath string)
 		return "", err
 	}
 
-	request := protocol.UpdateWorkflowRequest{
+	request := ingress.UpdateWorkflowRequest{
 		Uid:      &uid,
 		Workflow: b,
 	}
@@ -147,7 +147,7 @@ func Update(conn *grpc.ClientConn, namespace string, id string, filepath string)
 
 // Delete removes a workflow
 func Delete(conn *grpc.ClientConn, namespace, id string) (string, error) {
-	client := protocol.NewDirektivClient(conn)
+	client := ingress.NewDirektivIngressClient(conn)
 	defer conn.Close()
 
 	ctx := context.Background()
@@ -159,7 +159,7 @@ func Delete(conn *grpc.ClientConn, namespace, id string) (string, error) {
 		return "", err
 	}
 
-	request := protocol.DeleteWorkflowRequest{
+	request := ingress.DeleteWorkflowRequest{
 		Uid: &uid,
 	}
 
@@ -175,7 +175,7 @@ func Delete(conn *grpc.ClientConn, namespace, id string) (string, error) {
 
 // Add creates a new workflow on a namespace
 func Add(conn *grpc.ClientConn, namespace string, filepath string) (string, error) {
-	client := protocol.NewDirektivClient(conn)
+	client := ingress.NewDirektivIngressClient(conn)
 	defer conn.Close()
 
 	ctx := context.Background()
@@ -186,7 +186,7 @@ func Add(conn *grpc.ClientConn, namespace string, filepath string) (string, erro
 	if err != nil {
 		return "", err
 	}
-	request := protocol.AddWorkflowRequest{
+	request := ingress.AddWorkflowRequest{
 		Namespace: &namespace,
 		Workflow:  b,
 	}
