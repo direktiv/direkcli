@@ -35,7 +35,7 @@ func List(conn *grpc.ClientConn, namespace string) ([]*ingress.GetWorkflowsRespo
 	return resp.Workflows, nil
 }
 
-// // Execute runs the yaml provided from the workflow
+// Execute a workflow using the yaml provided
 func Execute(conn *grpc.ClientConn, namespace string, id string, input string) (string, error) {
 	client := ingress.NewDirektivIngressClient(conn)
 
@@ -70,7 +70,7 @@ func Execute(conn *grpc.ClientConn, namespace string, id string, input string) (
 	return fmt.Sprintf("Successfully invoked, Instance ID: %s", resp.GetInstanceId()), nil
 }
 
-// getWorkflowUID returns uid of workflow so we can update/delete things related to it
+// getWorkflowUID returns the UID of a workflow
 func getWorkflowUID(conn *grpc.ClientConn, namespace, id string) (string, error) {
 	client := ingress.NewDirektivIngressClient(conn)
 
@@ -94,7 +94,7 @@ func getWorkflowUID(conn *grpc.ClientConn, namespace, id string) (string, error)
 	return resp.GetUid(), nil
 }
 
-// Get returns the YAML contents of the workflow
+// Get returns a workflow definition in YAML format
 func Get(conn *grpc.ClientConn, namespace string, id string) (string, error) {
 	client := ingress.NewDirektivIngressClient(conn)
 	defer conn.Close()
@@ -120,7 +120,7 @@ func Get(conn *grpc.ClientConn, namespace string, id string) (string, error) {
 	return string(resp.GetWorkflow()), nil
 }
 
-// Update updates a workflow from the provided id
+// Update a workflow specified by ID.
 func Update(conn *grpc.ClientConn, namespace string, id string, filepath string) (string, error) {
 	client := ingress.NewDirektivIngressClient(conn)
 	defer conn.Close()
@@ -156,7 +156,7 @@ func Update(conn *grpc.ClientConn, namespace string, id string, filepath string)
 	return fmt.Sprintf("Successfully updated '%s'", resp.GetId()), nil
 }
 
-// Delete removes a workflow
+// Delete an existing workflow.
 func Delete(conn *grpc.ClientConn, namespace, id string) (string, error) {
 	client := ingress.NewDirektivIngressClient(conn)
 	defer conn.Close()
@@ -186,7 +186,7 @@ func Delete(conn *grpc.ClientConn, namespace, id string) (string, error) {
 	return fmt.Sprintf("Deleted workflow '%v'", id), nil
 }
 
-// Add creates a new workflow on a namespace
+// Add creates a new workflow
 func Add(conn *grpc.ClientConn, namespace string, filepath string) (string, error) {
 	client := ingress.NewDirektivIngressClient(conn)
 	defer conn.Close()
