@@ -2,8 +2,6 @@ module github.com/vorteil/direkcli
 
 go 1.15
 
-replace github.com/vorteil/direktiv => /home/trentis/Documents/github.com/vorteil/direktiv
-
 require (
 	github.com/nats-io/nats.go v1.10.0
 	github.com/segmentio/ksuid v1.0.3
