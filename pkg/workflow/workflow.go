@@ -15,17 +15,19 @@ import (
 func List(conn *grpc.ClientConn, namespace string) ([]*ingress.GetWorkflowsResponse_Workflow, error) {
 	client := ingress.NewDirektivIngressClient(conn)
 
+	// set context with 3 second timeout
 	ctx := context.Background()
 	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
 	defer cancel()
 
+	// prepare request
 	request := ingress.GetWorkflowsRequest{
 		Namespace: &namespace,
 	}
 
+	// send grpc request
 	resp, err := client.GetWorkflows(ctx, &request)
 	if err != nil {
-		// convert the error
 		s := status.Convert(err)
 		return nil, fmt.Errorf("[%v] %v", s.Code(), s.Message())
 	}
@@ -37,6 +39,7 @@ func List(conn *grpc.ClientConn, namespace string) ([]*ingress.GetWorkflowsRespo
 func Execute(conn *grpc.ClientConn, namespace string, id string, input string) (string, error) {
 	client := ingress.NewDirektivIngressClient(conn)
 
+	// set context with 3 second timeout
 	ctx := context.Background()
 	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
 	defer cancel()
@@ -50,12 +53,14 @@ func Execute(conn *grpc.ClientConn, namespace string, id string, input string) (
 		}
 	}
 
+	// prepare request
 	request := ingress.InvokeWorkflowRequest{
 		Namespace:  &namespace,
 		Input:      b,
 		WorkflowId: &id,
 	}
 
+	// send grpc request
 	resp, err := client.InvokeWorkflow(ctx, &request)
 	if err != nil {
 		s := status.Convert(err)
@@ -65,22 +70,24 @@ func Execute(conn *grpc.ClientConn, namespace string, id string, input string) (
 	return fmt.Sprintf("Successfully invoked, Instance ID: %s", resp.GetInstanceId()), nil
 }
 
-// getWorkflowUid returns uid of workflow so we can update/delete things related to it
-func getWorkflowUid(conn *grpc.ClientConn, namespace, id string) (string, error) {
+// getWorkflowUID returns uid of workflow so we can update/delete things related to it
+func getWorkflowUID(conn *grpc.ClientConn, namespace, id string) (string, error) {
 	client := ingress.NewDirektivIngressClient(conn)
 
+	// set context with 3 second timeout
 	ctx := context.Background()
 	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
 	defer cancel()
 
+	// prepare request
 	request := ingress.GetWorkflowByIdRequest{
 		Namespace: &namespace,
 		Id:        &id,
 	}
 
+	// send grpc request
 	resp, err := client.GetWorkflowById(ctx, &request)
 	if err != nil {
-		// convert the error
 		s := status.Convert(err)
 		return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
 	}
@@ -92,18 +99,20 @@ func Get(conn *grpc.ClientConn, namespace string, id string) (string, error) {
 	client := ingress.NewDirektivIngressClient(conn)
 	defer conn.Close()
 
+	// set context with 3 second timeout
 	ctx := context.Background()
 	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
 	defer cancel()
 
+	// prepare request
 	request := ingress.GetWorkflowByIdRequest{
 		Namespace: &namespace,
 		Id:        &id,
 	}
 
+	// send grpc request
 	resp, err := client.GetWorkflowById(ctx, &request)
 	if err != nil {
-		// convert the error
 		s := status.Convert(err)
 		return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
 	}
@@ -116,6 +125,7 @@ func Update(conn *grpc.ClientConn, namespace string, id string, filepath string)
 	client := ingress.NewDirektivIngressClient(conn)
 	defer conn.Close()
 
+	// set context with 3 second timeout
 	ctx := context.Background()
 	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
 	defer cancel()
@@ -125,19 +135,20 @@ func Update(conn *grpc.ClientConn, namespace string, id string, filepath string)
 		return "", err
 	}
 
-	uid, err := getWorkflowUid(conn, namespace, id)
+	uid, err := getWorkflowUID(conn, namespace, id)
 	if err != nil {
 		return "", err
 	}
 
+	// prepare request
 	request := ingress.UpdateWorkflowRequest{
 		Uid:      &uid,
 		Workflow: b,
 	}
 
+	// send grpc request
 	resp, err := client.UpdateWorkflow(ctx, &request)
 	if err != nil {
-		// convert the error
 		s := status.Convert(err)
 		return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
 	}
@@ -150,6 +161,7 @@ func Delete(conn *grpc.ClientConn, namespace, id string) (string, error) {
 	client := ingress.NewDirektivIngressClient(conn)
 	defer conn.Close()
 
+	// set context with 3 second timeout
 	ctx := context.Background()
 	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
 	defer cancel()
@@ -159,13 +171,14 @@ func Delete(conn *grpc.ClientConn, namespace, id string) (string, error) {
 		return "", err
 	}
 
+	// prepare request
 	request := ingress.DeleteWorkflowRequest{
 		Uid: &uid,
 	}
 
+	// send grpc request
 	_, err = client.DeleteWorkflow(ctx, &request)
 	if err != nil {
-		// convert the error
 		s := status.Convert(err)
 		return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
 	}
@@ -178,6 +191,7 @@ func Add(conn *grpc.ClientConn, namespace string, filepath string) (string, erro
 	client := ingress.NewDirektivIngressClient(conn)
 	defer conn.Close()
 
+	// set context with 3 second timeout
 	ctx := context.Background()
 	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
 	defer cancel()
@@ -186,14 +200,16 @@ func Add(conn *grpc.ClientConn, namespace string, filepath string) (string, erro
 	if err != nil {
 		return "", err
 	}
+
+	// prepare request
 	request := ingress.AddWorkflowRequest{
 		Namespace: &namespace,
 		Workflow:  b,
 	}
 
+	// send grpc request
 	resp, err := client.AddWorkflow(ctx, &request)
 	if err != nil {
-		// convert the error
 		s := status.Convert(err)
 		return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
 	}
