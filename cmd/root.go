@@ -1,35 +1,22 @@
-/*
-Copyright © 2021 NAME HERE <EMAIL ADDRESS>
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
 package cmd
 
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/sisatech/tablewriter"
 	"github.com/spf13/cobra"
 	"github.com/vorteil/direkcli/pkg/instance"
 	log "github.com/vorteil/direkcli/pkg/log"
 	"github.com/vorteil/direkcli/pkg/namespace"
+	"github.com/vorteil/direkcli/pkg/registries"
+	"github.com/vorteil/direkcli/pkg/secrets"
 	"github.com/vorteil/direkcli/pkg/workflow"
 	"github.com/vorteil/vorteil/pkg/elog"
 	"google.golang.org/grpc"
 )
 
-var flagNamespace string
 var flagInputFile string
 var flagGRPC string
 
@@ -86,6 +73,7 @@ var namespaceListCmd = &cobra.Command{
 		}
 		if len(list) == 0 {
 			logger.Printf("No namespaces exist")
+			return
 		}
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader([]string{"Name"})
@@ -102,7 +90,7 @@ var namespaceListCmd = &cobra.Command{
 
 // namespaceCreateCmd
 var namespaceCreateCmd = &cobra.Command{
-	Use:   "create [NAME]",
+	Use:   "create [NAMESPACE]",
 	Short: "Creates a new namespace",
 	Long:  ``,
 	Args:  cobra.ExactArgs(1),
@@ -118,7 +106,7 @@ var namespaceCreateCmd = &cobra.Command{
 
 // namespaceDeleteCmd
 var namespaceDeleteCmd = &cobra.Command{
-	Use:   "delete [NAME]",
+	Use:   "delete [NAMESPACE]",
 	Short: "Deletes a namespace",
 	Long:  ``,
 	Args:  cobra.ExactArgs(1),
@@ -155,6 +143,7 @@ var workflowListCmd = &cobra.Command{
 
 		if len(list) == 0 {
 			logger.Printf("No workflows exist under '%s'", args[0])
+			return
 		}
 
 		table := tablewriter.NewWriter(os.Stdout)
@@ -313,7 +302,9 @@ var instanceListCmd = &cobra.Command{
 
 		if len(list) == 0 {
 			logger.Printf("No instances exist under '%s'", args[0])
+			return
 		}
+
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader([]string{"ID", "Status"})
 
@@ -322,6 +313,135 @@ var instanceListCmd = &cobra.Command{
 			table.Append([]string{
 				instance.GetId(),
 				instance.GetStatus(),
+			})
+		}
+		table.Render()
+	},
+}
+
+//registriesCmd
+var registriesCmd = &cobra.Command{
+	Use:   "registries",
+	Short: "List, Create and Remove registries from a Namespace",
+}
+
+var createRegistryCmd = &cobra.Command{
+	Use:   "create [NAMESPACE] [URL] [USER]:[TOKEN]",
+	Short: "Creates a registry under a namespace",
+	Args:  cobra.ExactArgs(3),
+	Run: func(cmd *cobra.Command, args []string) {
+		// replace : with a ! for args[2] ! is used in direktiv ! gets picked up by bash unfortunately
+		args[2] = strings.ReplaceAll(args[2], ":", "!")
+		success, err := registries.Create(conn, args[0], args[1], args[2])
+		if err != nil {
+			logger.Errorf(err.Error())
+			os.Exit(1)
+		}
+		logger.Printf(success)
+	},
+}
+
+var removeRegistryCmd = &cobra.Command{
+	Use:   "delete [NAMESPACE] [URL]",
+	Short: "Removes the registry from the namespace with provided URL",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		success, err := registries.Delete(conn, args[0], args[1])
+		if err != nil {
+			logger.Errorf(err.Error())
+			os.Exit(1)
+		}
+		logger.Printf(success)
+	},
+}
+
+var listRegistriesCmd = &cobra.Command{
+	Use:   "list [NAMESPACE]",
+	Short: "Returns a list of registries for a namespace",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		registries, err := registries.List(conn, args[0])
+		if err != nil {
+			logger.Errorf(err.Error())
+			os.Exit(1)
+		}
+		if len(registries) == 0 {
+			logger.Printf("No registries exist under '%s'", args[0])
+			return
+		}
+
+		table := tablewriter.NewWriter(os.Stdout)
+		table.SetHeader([]string{"Registry"})
+
+		// Build string array rows
+		for _, registry := range registries {
+			table.Append([]string{
+				registry.GetName(),
+			})
+		}
+		table.Render()
+	},
+}
+
+//secretsCmd
+var secretsCmd = &cobra.Command{
+	Use:   "secrets",
+	Short: "List, Create and Remove Secrets from a Namespace",
+	Long:  "",
+}
+
+var createSecretCmd = &cobra.Command{
+	Use:   "create [NAMESPACE] [KEY] [VALUE]",
+	Short: "Creates a new secret for direktiv",
+	Long:  "",
+	Args:  cobra.ExactArgs(3),
+	Run: func(cmd *cobra.Command, args []string) {
+		success, err := secrets.Create(conn, args[0], args[1], args[2])
+		if err != nil {
+			logger.Errorf(err.Error())
+			os.Exit(1)
+		}
+		logger.Printf(success)
+	},
+}
+
+var removeSecretCmd = &cobra.Command{
+	Use:   "delete [NAMESPACE] [KEY]",
+	Short: "Removes a secret from a namespace",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		success, err := secrets.Delete(conn, args[0], args[1])
+		if err != nil {
+			logger.Errorf(err.Error())
+			os.Exit(1)
+		}
+		logger.Printf(success)
+	},
+}
+
+var listSecretsCmd = &cobra.Command{
+	Use:   "list [NAMESPACE]",
+	Short: "Returns a list of secrets for a namespace",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		secrets, err := secrets.List(conn, args[0])
+		if err != nil {
+			logger.Errorf(err.Error())
+			os.Exit(1)
+		}
+
+		if len(secrets) == 0 {
+			logger.Printf("No secrets exist under '%s'", args[0])
+			return
+		}
+
+		table := tablewriter.NewWriter(os.Stdout)
+		table.SetHeader([]string{"Secret"})
+
+		// Build string array rows
+		for _, secret := range secrets {
+			table.Append([]string{
+				secret.GetName(),
 			})
 		}
 		table.Render()
@@ -350,10 +470,22 @@ func Execute() {
 	instanceCmd.AddCommand(instanceListCmd)
 	instanceCmd.AddCommand(instanceLogsCmd)
 
+	// Secrets
+	secretsCmd.AddCommand(createSecretCmd)
+	secretsCmd.AddCommand(removeSecretCmd)
+	secretsCmd.AddCommand(listSecretsCmd)
+
+	// Registries
+	registriesCmd.AddCommand(createRegistryCmd)
+	registriesCmd.AddCommand(removeRegistryCmd)
+	registriesCmd.AddCommand(listRegistriesCmd)
+
 	// Root Commands
 	rootCmd.AddCommand(namespaceCmd)
 	rootCmd.AddCommand(workflowCmd)
 	rootCmd.AddCommand(instanceCmd)
+	rootCmd.AddCommand(secretsCmd)
+	rootCmd.AddCommand(registriesCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
