@@ -58,6 +58,21 @@ var namespaceCmd = &cobra.Command{
 	Long:  ``,
 }
 
+// namespaceSendEventCmd
+var namespaceSendEventCmd = &cobra.Command{
+	Use:   "send [NAMESPACE] [CLOUDEVENTPATH]",
+	Short: "Sends a cloud event to a namespace",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		success, err := namespace.SendEvent(conn, args[0], args[1])
+		if err != nil {
+			logger.Errorf(err.Error())
+			os.Exit(1)
+		}
+		logger.Printf(success)
+	},
+}
+
 // namespaceListCmd
 var namespaceListCmd = &cobra.Command{
 	Use:   "list",
@@ -198,10 +213,25 @@ var workflowExecuteCmd = &cobra.Command{
 	},
 }
 
+var workflowToggleCmd = &cobra.Command{
+	Use:   "toggle [NAMESPACE] [WORKFLOW]",
+	Short: "Enables or Disables the workflow provided",
+	Args:  cobra.ExactArgs(2),
+	Long:  ``,
+	Run: func(cmd *cobra.Command, args []string) {
+		success, err := workflow.Toggle(conn, args[0], args[1])
+		if err != nil {
+			logger.Errorf(err.Error())
+			os.Exit(1)
+		}
+		logger.Printf(success)
+	},
+}
+
 // workflowAddCmd
 var workflowAddCmd = &cobra.Command{
-	Use:   "add [NAMESPACE] [WORKFLOW]",
-	Short: "Adds a new workflow",
+	Use:   "create [NAMESPACE] [WORKFLOW]",
+	Short: "Creates a new workflow",
 	Args:  cobra.ExactArgs(2),
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -456,6 +486,7 @@ func Execute() {
 	namespaceCmd.AddCommand(namespaceListCmd)
 	namespaceCmd.AddCommand(namespaceCreateCmd)
 	namespaceCmd.AddCommand(namespaceDeleteCmd)
+	namespaceCmd.AddCommand(namespaceSendEventCmd)
 
 	// Workflow commands
 	workflowCmd.AddCommand(workflowAddCmd)
@@ -464,6 +495,7 @@ func Execute() {
 	workflowCmd.AddCommand(workflowUpdateCmd)
 	workflowCmd.AddCommand(workflowGetCmd)
 	workflowCmd.AddCommand(workflowExecuteCmd)
+	workflowCmd.AddCommand(workflowToggleCmd)
 
 	// Workflow instance commands
 	instanceCmd.AddCommand(instanceGetCmd)

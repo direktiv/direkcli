@@ -11,6 +11,46 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// Toggle enables or disables the workflow
+func Toggle(conn *grpc.ClientConn, namespace, workflow string) (string, error) {
+	client := ingress.NewDirektivIngressClient(conn)
+
+	ctx := context.Background()
+	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
+	defer cancel()
+
+	request := ingress.GetWorkflowByIdRequest{
+		Namespace: &namespace,
+		Id:        &workflow,
+	}
+
+	resp, err := client.GetWorkflowById(ctx, &request)
+	if err != nil {
+		s := status.Convert(err)
+		return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
+	}
+
+	toggle := !*resp.Active
+
+	uRequest := ingress.UpdateWorkflowRequest{
+		Uid:      resp.Uid,
+		Workflow: resp.Workflow,
+		Active:   &toggle,
+	}
+
+	_, err = client.UpdateWorkflow(ctx, &uRequest)
+	if err != nil {
+		s := status.Convert(err)
+		return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
+	}
+
+	if toggle {
+		return fmt.Sprintf("Enabled workflow '%s'", workflow), nil
+	}
+
+	return fmt.Sprintf("Disabled workflow '%s'", workflow), nil
+}
+
 // List returns an array of workflows for a given namespace
 func List(conn *grpc.ClientConn, namespace string) ([]*ingress.GetWorkflowsResponse_Workflow, error) {
 	client := ingress.NewDirektivIngressClient(conn)
