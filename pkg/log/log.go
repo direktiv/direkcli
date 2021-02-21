@@ -14,7 +14,7 @@ func init() {
 	log = logger
 }
 
-// GetLogger returns the logger used throughout the CLI
+// GetLogger returns the global 'log' variable
 func GetLogger() elog.View {
 	return log
 }

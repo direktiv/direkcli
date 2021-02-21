@@ -10,20 +10,23 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// Create creates a new registry on a namespace
+// Create a new registry
 func Create(conn *grpc.ClientConn, namespace string, key string, value string) (string, error) {
 	client := ingress.NewDirektivIngressClient(conn)
 
+	// set context with 3 second timeout
 	ctx := context.Background()
 	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
 	defer cancel()
 
+	// prepare request
 	request := ingress.StoreRegistryRequest{
 		Namespace: &namespace,
 		Name:      &key,
 		Data:      []byte(value),
 	}
 
+	// send grpc request
 	_, err := client.StoreRegistry(ctx, &request)
 	if err != nil {
 		s := status.Convert(err)
@@ -37,14 +40,17 @@ func Create(conn *grpc.ClientConn, namespace string, key string, value string) (
 func List(conn *grpc.ClientConn, namespace string) ([]*ingress.GetRegistriesResponse_Registry, error) {
 	client := ingress.NewDirektivIngressClient(conn)
 
+	// set context with 3 second timeout
 	ctx := context.Background()
 	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
 	defer cancel()
 
+	// prepare request
 	request := ingress.GetRegistriesRequest{
 		Namespace: &namespace,
 	}
 
+	// send grpc request
 	resp, err := client.GetRegistries(ctx, &request)
 	if err != nil {
 		s := status.Convert(err)
@@ -54,19 +60,22 @@ func List(conn *grpc.ClientConn, namespace string) ([]*ingress.GetRegistriesResp
 	return resp.Registries, nil
 }
 
-// Delete remvoes a registry from a namespace
+// Delete removes a registry from a namespace
 func Delete(conn *grpc.ClientConn, namespace string, key string) (string, error) {
 	client := ingress.NewDirektivIngressClient(conn)
 
+	// set context with 3 second timeout
 	ctx := context.Background()
 	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
 	defer cancel()
 
+	// prepare request
 	request := ingress.DeleteRegistryRequest{
 		Namespace: &namespace,
 		Name:      &key,
 	}
 
+	// send grpc request
 	_, err := client.DeleteRegistry(ctx, &request)
 	if err != nil {
 		s := status.Convert(err)
