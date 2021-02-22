@@ -206,7 +206,7 @@ func Delete(conn *grpc.ClientConn, namespace, id string) (string, error) {
 	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
 	defer cancel()
 
-	uid, err := getWorkflowUid(conn, namespace, id)
+	uid, err := getWorkflowUID(conn, namespace, id)
 	if err != nil {
 		return "", err
 	}
