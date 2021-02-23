@@ -28,7 +28,7 @@ const grpcConnection = "127.0.0.1:6666"
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "direkcli",
-	Short: "A cli for direktiv that talks directly a grpc server direktiv hosts",
+	Short: "A CLI for interacting with a direktiv server via gRPC.",
 	Long:  ``,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		logger = log.GetLogger()
@@ -60,7 +60,7 @@ var namespaceCmd = &cobra.Command{
 
 // namespaceSendEventCmd
 var namespaceSendEventCmd = &cobra.Command{
-	Use:   "send [NAMESPACE] [CLOUDEVENTPATH]",
+	Use:   "send NAMESPACE CLOUDEVENTPATH",
 	Short: "Sends a cloud event to a namespace",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -105,8 +105,8 @@ var namespaceListCmd = &cobra.Command{
 
 // namespaceCreateCmd
 var namespaceCreateCmd = &cobra.Command{
-	Use:   "create [NAMESPACE]",
-	Short: "Creates a new namespace",
+	Use:   "create NAMESPACE",
+	Short: "Create a new namespace",
 	Long:  ``,
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -121,8 +121,8 @@ var namespaceCreateCmd = &cobra.Command{
 
 // namespaceDeleteCmd
 var namespaceDeleteCmd = &cobra.Command{
-	Use:   "delete [NAMESPACE]",
-	Short: "Deletes a namespace",
+	Use:   "delete NAMESPACE",
+	Short: "Delete a namespace",
 	Long:  ``,
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -145,7 +145,7 @@ var workflowCmd = &cobra.Command{
 // workflowListCmd
 var workflowListCmd = &cobra.Command{
 	Use:   `list [NAMESPACE]`,
-	Short: "Lists all workflows under a namespace",
+	Short: "List all workflows under a namespace",
 	Args:  cobra.ExactArgs(1),
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -176,7 +176,7 @@ var workflowListCmd = &cobra.Command{
 
 // workflowGetCmd
 var workflowGetCmd = &cobra.Command{
-	Use:   "get [NAMESPACE] [ID]",
+	Use:   "get NAMESPACE ID",
 	Short: "Get yaml from a workflow",
 	Args:  cobra.ExactArgs(2),
 	Long:  ``,
@@ -192,7 +192,7 @@ var workflowGetCmd = &cobra.Command{
 
 // workflowExecuteCmd
 var workflowExecuteCmd = &cobra.Command{
-	Use:   "execute [NAMESPACE] [ID]",
+	Use:   "execute NAMESPACE ID",
 	Short: "Executes workflow with given ID",
 	Args:  cobra.ExactArgs(2),
 	Long:  ``,
@@ -214,7 +214,7 @@ var workflowExecuteCmd = &cobra.Command{
 }
 
 var workflowToggleCmd = &cobra.Command{
-	Use:   "toggle [NAMESPACE] [WORKFLOW]",
+	Use:   "toggle NAMESPACE WORKFLOW",
 	Short: "Enables or Disables the workflow provided",
 	Args:  cobra.ExactArgs(2),
 	Long:  ``,
@@ -230,7 +230,7 @@ var workflowToggleCmd = &cobra.Command{
 
 // workflowAddCmd
 var workflowAddCmd = &cobra.Command{
-	Use:   "create [NAMESPACE] [WORKFLOW]",
+	Use:   "create NAMESPACE WORKFLOW",
 	Short: "Creates a new workflow",
 	Args:  cobra.ExactArgs(2),
 	Long:  ``,
@@ -247,7 +247,7 @@ var workflowAddCmd = &cobra.Command{
 
 // workflowUpdateCmd
 var workflowUpdateCmd = &cobra.Command{
-	Use:   "update [NAMESPACE] [ID] [WORKFLOW]",
+	Use:   "update NAMESPACE ID WORKFLOW",
 	Short: "Updates an existing workflow",
 	Args:  cobra.ExactArgs(3),
 	Long:  ``,
@@ -263,7 +263,7 @@ var workflowUpdateCmd = &cobra.Command{
 
 // workflowDeleteCmd
 var workflowDeleteCmd = &cobra.Command{
-	Use:   "delete [NAMESPACE] [ID]",
+	Use:   "delete NAMESPACE ID",
 	Short: "Deletes an existing workflow",
 	Args:  cobra.ExactArgs(2),
 	Long:  ``,
@@ -285,7 +285,7 @@ var instanceCmd = &cobra.Command{
 }
 
 var instanceGetCmd = &cobra.Command{
-	Use:   "get [ID]",
+	Use:   "get ID",
 	Short: "Get details about a workflow instance",
 	Args:  cobra.ExactArgs(1),
 	Long:  ``,
@@ -302,7 +302,7 @@ var instanceGetCmd = &cobra.Command{
 }
 
 var instanceLogsCmd = &cobra.Command{
-	Use:   "logs [ID]",
+	Use:   "logs ID",
 	Short: "Grabs all logs for the instance ID provided",
 	Long:  ``,
 	Args:  cobra.ExactArgs(1),
@@ -319,7 +319,7 @@ var instanceLogsCmd = &cobra.Command{
 }
 
 var instanceListCmd = &cobra.Command{
-	Use:   "list [NAMESPACE]",
+	Use:   "list NAMESPACE",
 	Short: "List all workflow instances in a namespace",
 	Long:  ``,
 	Args:  cobra.ExactArgs(1),
@@ -356,7 +356,7 @@ var registriesCmd = &cobra.Command{
 }
 
 var createRegistryCmd = &cobra.Command{
-	Use:   "create [NAMESPACE] [URL] [USER]:[TOKEN]",
+	Use:   "create NAMESPACE URL USER:TOKEN",
 	Short: "Creates a registry under a namespace",
 	Args:  cobra.ExactArgs(3),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -372,7 +372,7 @@ var createRegistryCmd = &cobra.Command{
 }
 
 var removeRegistryCmd = &cobra.Command{
-	Use:   "delete [NAMESPACE] [URL]",
+	Use:   "delete NAMESPACE URL",
 	Short: "Removes the registry from the namespace with provided URL",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -386,7 +386,7 @@ var removeRegistryCmd = &cobra.Command{
 }
 
 var listRegistriesCmd = &cobra.Command{
-	Use:   "list [NAMESPACE]",
+	Use:   "list NAMESPACE",
 	Short: "Returns a list of registries for a namespace",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -421,7 +421,7 @@ var secretsCmd = &cobra.Command{
 }
 
 var createSecretCmd = &cobra.Command{
-	Use:   "create [NAMESPACE] [KEY] [VALUE]",
+	Use:   "create NAMESPACE KEY VALUE",
 	Short: "Creates a new secret for direktiv",
 	Long:  "",
 	Args:  cobra.ExactArgs(3),
@@ -436,7 +436,7 @@ var createSecretCmd = &cobra.Command{
 }
 
 var removeSecretCmd = &cobra.Command{
-	Use:   "delete [NAMESPACE] [KEY]",
+	Use:   "delete NAMESPACE KEY",
 	Short: "Removes a secret from a namespace",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -450,7 +450,7 @@ var removeSecretCmd = &cobra.Command{
 }
 
 var listSecretsCmd = &cobra.Command{
-	Use:   "list [NAMESPACE]",
+	Use:   "list NAMESPACE",
 	Short: "Returns a list of secrets for a namespace",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
