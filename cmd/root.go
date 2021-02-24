@@ -276,7 +276,7 @@ var createRegistryCmd = generateCmd("create NAMESPACE URL USER:TOKEN", "Creates 
 }, cobra.ExactArgs(3))
 
 var removeRegistryCmd = generateCmd("delete NAMESPACE URL", "Deletes a registry from the provided namespace", "", func(cmd *cobra.Command, args []string) {
-	success, err := store.DeleteRegistry(conn, args[0], args[1])
+	success, err := store.Delete(conn, args[0], args[1], "registry")
 	if err != nil {
 		logger.Errorf(err.Error())
 		os.Exit(1)
@@ -320,7 +320,7 @@ var createSecretCmd = generateCmd("create NAMESPACE KEY VALUE", "Creates a new s
 }, cobra.ExactArgs(3))
 
 var removeSecretCmd = generateCmd("delete NAMESPACE KEY", "Deletes a secret from the provided namespace", "", func(cmd *cobra.Command, args []string) {
-	success, err := store.DeleteSecret(conn, args[0], args[1])
+	success, err := store.Delete(conn, args[0], args[1], "secret")
 	if err != nil {
 		logger.Errorf(err.Error())
 		os.Exit(1)

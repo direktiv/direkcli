@@ -110,28 +110,60 @@ func ListSecrets(conn *grpc.ClientConn, namespace string) ([]*ingress.GetSecrets
 	return resp.Secrets, nil
 }
 
-// DeleteSecret removes a secret from a namespace
-func DeleteSecret(conn *grpc.ClientConn, namespace string, secret string) (string, error) {
+// // DeleteSecret removes a secret from a namespace
+// func DeleteSecret(conn *grpc.ClientConn, namespace string, secret string) (string, error) {
+// 	client, ctx, cancel := util.CreateClient(conn)
+
+// }
+
+func Delete(conn *grpc.ClientConn, namespace string, secret string, typeOf string) (string, error) {
+	var success string
+	var err error
+
 	client, ctx, cancel := util.CreateClient(conn)
+	defer cancel()
 
-	// prepare request
-	request := ingress.DeleteSecretRequest{
-		Namespace: &namespace,
-		Name:      &secret,
-	}
+	switch typeOf {
+	case "secret":
 
-	// send grpc request
-	_, err := client.DeleteSecret(ctx, &request)
-	if err != nil {
-		s := status.Convert(err)
-		cancel()
-		return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
+		// prepare request
+		request := ingress.DeleteSecretRequest{
+			Namespace: &namespace,
+			Name:      &secret,
+		}
+
+		// send grpc request
+		_, err := client.DeleteSecret(ctx, &request)
+		if err != nil {
+			s := status.Convert(err)
+			return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
+		}
+		success = fmt.Sprintf("Successfully removed secret '%s'.", secret)
+
+	case "registry":
+
+		// prepare request
+		request := ingress.DeleteRegistryRequest{
+			Namespace: &namespace,
+			Name:      &secret,
+		}
+
+		// send grpc request
+		_, err := client.DeleteRegistry(ctx, &request)
+		if err != nil {
+			s := status.Convert(err)
+			return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
+		}
+
+		success = fmt.Sprintf("Successfully removed registry '%s'.", secret)
 	}
-	cancel()
-	return fmt.Sprintf("Successfully removed secret '%s'.", secret), nil
+	return success, err
 }
 
 func Create(conn *grpc.ClientConn, namespace string, secret string, value string, typeOf string) (string, error) {
+
+	var success string
+	var err error
 
 	client, ctx, cancel := util.CreateClient(conn)
 	defer cancel()
@@ -151,9 +183,10 @@ func Create(conn *grpc.ClientConn, namespace string, secret string, value string
 		_, err := client.StoreSecret(ctx, &request)
 		if err != nil {
 			s := status.Convert(err)
-			cancel()
 			return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
 		}
+
+		success = fmt.Sprintf("Successfully create secret '%s'.", secret)
 
 	case "registry":
 
@@ -171,6 +204,8 @@ func Create(conn *grpc.ClientConn, namespace string, secret string, value string
 			return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
 		}
 
-		return fmt.Sprintf("Successfully created registry '%s'.", secret), nil
+		success = fmt.Sprintf("Successfully created registry '%s'.", secret)
 	}
+
+	return success, err
 }
