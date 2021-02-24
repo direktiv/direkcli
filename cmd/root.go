@@ -10,8 +10,7 @@ import (
 	"github.com/vorteil/direkcli/pkg/instance"
 	log "github.com/vorteil/direkcli/pkg/log"
 	"github.com/vorteil/direkcli/pkg/namespace"
-	"github.com/vorteil/direkcli/pkg/registries"
-	"github.com/vorteil/direkcli/pkg/secrets"
+	store "github.com/vorteil/direkcli/pkg/store"
 	"github.com/vorteil/direkcli/pkg/workflow"
 	"github.com/vorteil/vorteil/pkg/elog"
 	"google.golang.org/grpc"
@@ -142,7 +141,7 @@ var workflowCmd = &cobra.Command{
 
 // workflowListCmd
 var workflowListCmd = &cobra.Command{
-	Use:   `list [NAMESPACE]`,
+	Use:   `list NAMESPACE`,
 	Short: "List all workflows under a namespace",
 	Args:  cobra.ExactArgs(1),
 	Long:  ``,
@@ -360,7 +359,7 @@ var createRegistryCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// replace : with a ! for args[2] ! is used in direktiv ! gets picked up by bash unfortunately
 		args[2] = strings.ReplaceAll(args[2], ":", "!")
-		success, err := registries.Create(conn, args[0], args[1], args[2])
+		success, err := store.CreateRegistry(conn, args[0], args[1], args[2])
 		if err != nil {
 			logger.Errorf(err.Error())
 			os.Exit(1)
@@ -374,7 +373,7 @@ var removeRegistryCmd = &cobra.Command{
 	Short: "Removes the registry from the namespace with provided URL",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		success, err := registries.Delete(conn, args[0], args[1])
+		success, err := store.DeleteRegistry(conn, args[0], args[1])
 		if err != nil {
 			logger.Errorf(err.Error())
 			os.Exit(1)
@@ -388,7 +387,7 @@ var listRegistriesCmd = &cobra.Command{
 	Short: "Returns a list of registries for a namespace",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		registries, err := registries.List(conn, args[0])
+		registries, err := store.ListRegistries(conn, args[0])
 		if err != nil {
 			logger.Errorf(err.Error())
 			os.Exit(1)
@@ -424,12 +423,12 @@ var createSecretCmd = &cobra.Command{
 	Long:  "",
 	Args:  cobra.ExactArgs(3),
 	Run: func(cmd *cobra.Command, args []string) {
-		success, err := secrets.Create(conn, args[0], args[1], args[2])
+		successMsg, err := store.CreateSecret(conn, args[0], args[1], args[2])
 		if err != nil {
 			logger.Errorf(err.Error())
 			os.Exit(1)
 		}
-		logger.Printf(success)
+		logger.Printf(successMsg)
 	},
 }
 
@@ -438,7 +437,7 @@ var removeSecretCmd = &cobra.Command{
 	Short: "Removes a secret from a namespace",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		success, err := secrets.Delete(conn, args[0], args[1])
+		success, err := store.DeleteSecret(conn, args[0], args[1])
 		if err != nil {
 			logger.Errorf(err.Error())
 			os.Exit(1)
@@ -452,7 +451,7 @@ var listSecretsCmd = &cobra.Command{
 	Short: "Returns a list of secrets for a namespace",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		secrets, err := secrets.List(conn, args[0])
+		secrets, err := store.ListSecrets(conn, args[0])
 		if err != nil {
 			logger.Errorf(err.Error())
 			os.Exit(1)
