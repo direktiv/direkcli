@@ -1,11 +1,10 @@
 package namespace
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
-	"time"
 
+	"github.com/vorteil/direkcli/pkg/util"
 	"github.com/vorteil/direktiv/pkg/ingress"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
@@ -13,12 +12,8 @@ import (
 
 // SendEvent sends the provided Cloud Event file to the specified namespace.
 func SendEvent(conn *grpc.ClientConn, namespace string, filepath string) (string, error) {
-	client := ingress.NewDirektivIngressClient(conn)
+	client, ctx, cancel := util.CreateClient(conn)
 	defer conn.Close()
-
-	// set context with 3 second timeout
-	ctx := context.Background()
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
 	defer cancel()
 
 	// read Cloud Event file
@@ -43,14 +38,10 @@ func SendEvent(conn *grpc.ClientConn, namespace string, filepath string) (string
 	return fmt.Sprintf("Successfully sent event to '%s'", namespace), nil
 }
 
-// List namespaces
+// List returns a list of namespaces
 func List(conn *grpc.ClientConn) ([]*ingress.GetNamespacesResponse_Namespace, error) {
-	client := ingress.NewDirektivIngressClient(conn)
+	client, ctx, cancel := util.CreateClient(conn)
 	defer conn.Close()
-
-	// set context with 3 second timeout
-	ctx := context.Background()
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
 	defer cancel()
 
 	// prepare request
@@ -68,12 +59,8 @@ func List(conn *grpc.ClientConn) ([]*ingress.GetNamespacesResponse_Namespace, er
 
 // Delete a namespace
 func Delete(name string, conn *grpc.ClientConn) (string, error) {
-	client := ingress.NewDirektivIngressClient(conn)
+	client, ctx, cancel := util.CreateClient(conn)
 	defer conn.Close()
-
-	// set timeout with 3 second timeout
-	ctx := context.Background()
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
 	defer cancel()
 
 	// prepare request
@@ -93,12 +80,8 @@ func Delete(name string, conn *grpc.ClientConn) (string, error) {
 
 // Create a new namespace
 func Create(name string, conn *grpc.ClientConn) (string, error) {
-	client := ingress.NewDirektivIngressClient(conn)
+	client, ctx, cancel := util.CreateClient(conn)
 	defer conn.Close()
-
-	// set timeout with 3 second timeout
-	ctx := context.Background()
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
 	defer cancel()
 
 	// prepare request

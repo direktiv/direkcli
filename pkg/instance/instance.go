@@ -1,10 +1,9 @@
 package instance
 
 import (
-	"context"
 	"fmt"
-	"time"
 
+	"github.com/vorteil/direkcli/pkg/util"
 	"github.com/vorteil/direktiv/pkg/ingress"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
@@ -12,13 +11,9 @@ import (
 
 // Logs returns all logs associated with the workflow instance ID
 func Logs(conn *grpc.ClientConn, id string) ([]*ingress.GetWorkflowInstanceLogsResponse_WorkflowInstanceLog, error) {
-	client := ingress.NewDirektivIngressClient(conn)
-
-	// set context with 3 second timeout
-	ctx := context.Background()
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
+	client, ctx, cancel := util.CreateClient(conn)
+	defer conn.Close()
 	defer cancel()
-
 	offset := int32(0)
 	limit := int32(10000)
 
@@ -41,13 +36,9 @@ func Logs(conn *grpc.ClientConn, id string) ([]*ingress.GetWorkflowInstanceLogsR
 
 // List workflow instances
 func List(conn *grpc.ClientConn, namespace string) ([]*ingress.GetWorkflowInstancesResponse_WorkflowInstance, error) {
-	client := ingress.NewDirektivIngressClient(conn)
-
-	// set context with 3 second timeout
-	ctx := context.Background()
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
+	client, ctx, cancel := util.CreateClient(conn)
+	defer conn.Close()
 	defer cancel()
-
 	// prepare request
 	request := ingress.GetWorkflowInstancesRequest{
 		Namespace: &namespace,
@@ -65,13 +56,9 @@ func List(conn *grpc.ClientConn, namespace string) ([]*ingress.GetWorkflowInstan
 
 // Get returns a workflow instance.
 func Get(conn *grpc.ClientConn, id string) (*ingress.GetWorkflowInstanceResponse, error) {
-	client := ingress.NewDirektivIngressClient(conn)
-
-	// set context with 3 second timeout
-	ctx := context.Background()
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
+	client, ctx, cancel := util.CreateClient(conn)
+	defer conn.Close()
 	defer cancel()
-
 	// prepare request
 	request := ingress.GetWorkflowInstanceRequest{
 		Id: &id,

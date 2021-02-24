@@ -1,10 +1,9 @@
 package secrets
 
 import (
-	"context"
 	"fmt"
-	"time"
 
+	"github.com/vorteil/direkcli/pkg/util"
 	"github.com/vorteil/direktiv/pkg/ingress"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
@@ -12,13 +11,9 @@ import (
 
 // Create creates a new secret within a namespace
 func Create(conn *grpc.ClientConn, namespace string, secret string, value string) (string, error) {
-	client := ingress.NewDirektivIngressClient(conn)
-
-	// set context with 3 second timeout
-	ctx := context.Background()
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
+	client, ctx, cancel := util.CreateClient(conn)
+	defer conn.Close()
 	defer cancel()
-
 	// prepare request
 	request := ingress.StoreSecretRequest{
 		Namespace: &namespace,
@@ -38,13 +33,9 @@ func Create(conn *grpc.ClientConn, namespace string, secret string, value string
 
 // List returns a list of secrets
 func List(conn *grpc.ClientConn, namespace string) ([]*ingress.GetSecretsResponse_Secret, error) {
-	client := ingress.NewDirektivIngressClient(conn)
-
-	// set context with 3 second timeout
-	ctx := context.Background()
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
+	client, ctx, cancel := util.CreateClient(conn)
+	defer conn.Close()
 	defer cancel()
-
 	// prepare request
 	request := ingress.GetSecretsRequest{
 		Namespace: &namespace,
@@ -62,11 +53,8 @@ func List(conn *grpc.ClientConn, namespace string) ([]*ingress.GetSecretsRespons
 
 // Delete removes a secret from a namespace
 func Delete(conn *grpc.ClientConn, namespace string, secret string) (string, error) {
-	client := ingress.NewDirektivIngressClient(conn)
-
-	// set context with 3 second timeout
-	ctx := context.Background()
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
+	client, ctx, cancel := util.CreateClient(conn)
+	defer conn.Close()
 	defer cancel()
 
 	// prepare request

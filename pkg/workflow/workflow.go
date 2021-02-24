@@ -1,11 +1,10 @@
 package workflow
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
-	"time"
 
+	"github.com/vorteil/direkcli/pkg/util"
 	"github.com/vorteil/direktiv/pkg/ingress"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
@@ -13,10 +12,8 @@ import (
 
 // Toggle enables or disables the workflow
 func Toggle(conn *grpc.ClientConn, namespace, workflow string) (string, error) {
-	client := ingress.NewDirektivIngressClient(conn)
-
-	ctx := context.Background()
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
+	client, ctx, cancel := util.CreateClient(conn)
+	defer conn.Close()
 	defer cancel()
 
 	request := ingress.GetWorkflowByIdRequest{
@@ -53,11 +50,8 @@ func Toggle(conn *grpc.ClientConn, namespace, workflow string) (string, error) {
 
 // List returns an array of workflows for a given namespace
 func List(conn *grpc.ClientConn, namespace string) ([]*ingress.GetWorkflowsResponse_Workflow, error) {
-	client := ingress.NewDirektivIngressClient(conn)
-
-	// set context with 3 second timeout
-	ctx := context.Background()
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
+	client, ctx, cancel := util.CreateClient(conn)
+	defer conn.Close()
 	defer cancel()
 
 	// prepare request
@@ -77,11 +71,8 @@ func List(conn *grpc.ClientConn, namespace string) ([]*ingress.GetWorkflowsRespo
 
 // Execute a workflow using the yaml provided
 func Execute(conn *grpc.ClientConn, namespace string, id string, input string) (string, error) {
-	client := ingress.NewDirektivIngressClient(conn)
-
-	// set context with 3 second timeout
-	ctx := context.Background()
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
+	client, ctx, cancel := util.CreateClient(conn)
+	defer conn.Close()
 	defer cancel()
 
 	var err error
@@ -112,13 +103,9 @@ func Execute(conn *grpc.ClientConn, namespace string, id string, input string) (
 
 // getWorkflowUID returns the UID of a workflow
 func getWorkflowUID(conn *grpc.ClientConn, namespace, id string) (string, error) {
-	client := ingress.NewDirektivIngressClient(conn)
-
-	// set context with 3 second timeout
-	ctx := context.Background()
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
+	client, ctx, cancel := util.CreateClient(conn)
+	defer conn.Close()
 	defer cancel()
-
 	// prepare request
 	request := ingress.GetWorkflowByIdRequest{
 		Namespace: &namespace,
@@ -136,12 +123,8 @@ func getWorkflowUID(conn *grpc.ClientConn, namespace, id string) (string, error)
 
 // Get returns a workflow definition in YAML format
 func Get(conn *grpc.ClientConn, namespace string, id string) (string, error) {
-	client := ingress.NewDirektivIngressClient(conn)
+	client, ctx, cancel := util.CreateClient(conn)
 	defer conn.Close()
-
-	// set context with 3 second timeout
-	ctx := context.Background()
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
 	defer cancel()
 
 	// prepare request
@@ -162,12 +145,8 @@ func Get(conn *grpc.ClientConn, namespace string, id string) (string, error) {
 
 // Update a workflow specified by ID.
 func Update(conn *grpc.ClientConn, namespace string, id string, filepath string) (string, error) {
-	client := ingress.NewDirektivIngressClient(conn)
+	client, ctx, cancel := util.CreateClient(conn)
 	defer conn.Close()
-
-	// set context with 3 second timeout
-	ctx := context.Background()
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
 	defer cancel()
 
 	b, err := ioutil.ReadFile(filepath)
@@ -198,12 +177,8 @@ func Update(conn *grpc.ClientConn, namespace string, id string, filepath string)
 
 // Delete an existing workflow.
 func Delete(conn *grpc.ClientConn, namespace, id string) (string, error) {
-	client := ingress.NewDirektivIngressClient(conn)
+	client, ctx, cancel := util.CreateClient(conn)
 	defer conn.Close()
-
-	// set context with 3 second timeout
-	ctx := context.Background()
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
 	defer cancel()
 
 	uid, err := getWorkflowUID(conn, namespace, id)
@@ -228,12 +203,8 @@ func Delete(conn *grpc.ClientConn, namespace, id string) (string, error) {
 
 // Add creates a new workflow
 func Add(conn *grpc.ClientConn, namespace string, filepath string) (string, error) {
-	client := ingress.NewDirektivIngressClient(conn)
+	client, ctx, cancel := util.CreateClient(conn)
 	defer conn.Close()
-
-	// set context with 3 second timeout
-	ctx := context.Background()
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
 	defer cancel()
 
 	b, err := ioutil.ReadFile(filepath)

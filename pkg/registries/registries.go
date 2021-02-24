@@ -1,10 +1,9 @@
 package registries
 
 import (
-	"context"
 	"fmt"
-	"time"
 
+	"github.com/vorteil/direkcli/pkg/util"
 	"github.com/vorteil/direktiv/pkg/ingress"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
@@ -12,11 +11,8 @@ import (
 
 // Create a new registry
 func Create(conn *grpc.ClientConn, namespace string, key string, value string) (string, error) {
-	client := ingress.NewDirektivIngressClient(conn)
-
-	// set context with 3 second timeout
-	ctx := context.Background()
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
+	client, ctx, cancel := util.CreateClient(conn)
+	defer conn.Close()
 	defer cancel()
 
 	// prepare request
@@ -38,11 +34,8 @@ func Create(conn *grpc.ClientConn, namespace string, key string, value string) (
 
 // List returns a list of registries
 func List(conn *grpc.ClientConn, namespace string) ([]*ingress.GetRegistriesResponse_Registry, error) {
-	client := ingress.NewDirektivIngressClient(conn)
-
-	// set context with 3 second timeout
-	ctx := context.Background()
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
+	client, ctx, cancel := util.CreateClient(conn)
+	defer conn.Close()
 	defer cancel()
 
 	// prepare request
@@ -62,11 +55,8 @@ func List(conn *grpc.ClientConn, namespace string) ([]*ingress.GetRegistriesResp
 
 // Delete removes a registry from a namespace
 func Delete(conn *grpc.ClientConn, namespace string, key string) (string, error) {
-	client := ingress.NewDirektivIngressClient(conn)
-
-	// set context with 3 second timeout
-	ctx := context.Background()
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
+	client, ctx, cancel := util.CreateClient(conn)
+	defer conn.Close()
 	defer cancel()
 
 	// prepare request

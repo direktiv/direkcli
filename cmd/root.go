@@ -22,8 +22,7 @@ var flagGRPC string
 
 var conn *grpc.ClientConn
 var logger elog.View
-
-const grpcConnection = "127.0.0.1:6666"
+var grpcConnection = "127.0.0.1:6666"
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -37,7 +36,6 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-
 		if connF == "" {
 			connF = grpcConnection
 		}
