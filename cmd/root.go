@@ -12,6 +12,7 @@ import (
 	"github.com/vorteil/direkcli/pkg/namespace"
 	store "github.com/vorteil/direkcli/pkg/store"
 	"github.com/vorteil/direkcli/pkg/workflow"
+	"github.com/vorteil/direktiv/pkg/ingress"
 	"github.com/vorteil/vorteil/pkg/elog"
 	"google.golang.org/grpc"
 )
@@ -285,12 +286,14 @@ var removeRegistryCmd = generateCmd("delete NAMESPACE URL", "Deletes a registry 
 }, cobra.ExactArgs(2))
 
 var listRegistriesCmd = generateCmd("list NAMESPACE", "Returns a list of registries from the provided namespace", "", func(cmd *cobra.Command, args []string) {
-	registries, err := store.ListRegistries(conn, args[0])
+	registries, err := store.List(conn, args[0], "registry")
 	if err != nil {
 		logger.Errorf(err.Error())
 		os.Exit(1)
 	}
-	if len(registries) == 0 {
+	castRegistries := registries.([]*ingress.GetRegistriesResponse_Registry)
+
+	if len(castRegistries) == 0 {
 		logger.Printf("No registries exist under '%s'", args[0])
 		return
 	}
@@ -299,7 +302,7 @@ var listRegistriesCmd = generateCmd("list NAMESPACE", "Returns a list of registr
 	table.SetHeader([]string{"Registry"})
 
 	// Build string array rows
-	for _, registry := range registries {
+	for _, registry := range castRegistries {
 		table.Append([]string{
 			registry.GetName(),
 		})
@@ -329,13 +332,15 @@ var removeSecretCmd = generateCmd("delete NAMESPACE KEY", "Deletes a secret from
 }, cobra.ExactArgs(2))
 
 var listSecretsCmd = generateCmd("list NAMESPACE", "Returns a list of secrets for the provided namespace", "", func(cmd *cobra.Command, args []string) {
-	secrets, err := store.ListSecrets(conn, args[0])
+	secrets, err := store.List(conn, args[0], "secret")
 	if err != nil {
 		logger.Errorf(err.Error())
 		os.Exit(1)
 	}
 
-	if len(secrets) == 0 {
+	castSecrets := secrets.([]*ingress.GetSecretsResponse_Secret)
+
+	if len(castSecrets) == 0 {
 		logger.Printf("No secrets exist under '%s'", args[0])
 		return
 	}
@@ -344,7 +349,7 @@ var listSecretsCmd = generateCmd("list NAMESPACE", "Returns a list of secrets fo
 	table.SetHeader([]string{"Secret"})
 
 	// Build string array rows
-	for _, secret := range secrets {
+	for _, secret := range castSecrets {
 		table.Append([]string{
 			secret.GetName(),
 		})
