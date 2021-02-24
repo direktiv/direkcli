@@ -10,26 +10,26 @@ import (
 )
 
 // CreateRegistry a new registry
-func CreateRegistry(conn *grpc.ClientConn, namespace string, key string, value string) (string, error) {
-	client, ctx, cancel := util.CreateClient(conn)
+// func CreateRegistry(conn *grpc.ClientConn, namespace string, key string, value string) (string, error) {
+// 	client, ctx, cancel := util.CreateClient(conn)
 
-	// prepare request
-	request := ingress.StoreRegistryRequest{
-		Namespace: &namespace,
-		Name:      &key,
-		Data:      []byte(value),
-	}
+// 	// prepare request
+// 	request := ingress.StoreRegistryRequest{
+// 		Namespace: &namespace,
+// 		Name:      &key,
+// 		Data:      []byte(value),
+// 	}
 
-	// send grpc request
-	_, err := client.StoreRegistry(ctx, &request)
-	if err != nil {
-		s := status.Convert(err)
-		cancel()
-		return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
-	}
-	cancel()
-	return fmt.Sprintf("Successfully created registry '%s'.", key), nil
-}
+// 	// send grpc request
+// 	_, err := client.StoreRegistry(ctx, &request)
+// 	if err != nil {
+// 		s := status.Convert(err)
+// 		cancel()
+// 		return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
+// 	}
+// 	cancel()
+// 	return fmt.Sprintf("Successfully created registry '%s'.", key), nil
+// }
 
 // ListRegistries returns a list of registries
 func ListRegistries(conn *grpc.ClientConn, namespace string) ([]*ingress.GetRegistriesResponse_Registry, error) {
@@ -72,25 +72,24 @@ func DeleteRegistry(conn *grpc.ClientConn, namespace string, key string) (string
 }
 
 // CreateSecret creates a new secret within a namespace
-func CreateSecret(conn *grpc.ClientConn, namespace string, secret string, value string) (string, error) {
-	client, ctx, cancel := util.CreateClient(conn)
-	// prepare request
-	request := ingress.StoreSecretRequest{
-		Namespace: &namespace,
-		Name:      &secret,
-		Data:      []byte(value),
-	}
+// func CreateSecret(conn *grpc.ClientConn, namespace string, secret string, value string) (string, error) {
+// 	// prepare request
+// 	request := ingress.StoreSecretRequest{
+// 		Namespace: &namespace,
+// 		Name:      &secret,
+// 		Data:      []byte(value),
+// 	}
 
-	// send grpc request
-	_, err := client.StoreSecret(ctx, &request)
-	if err != nil {
-		s := status.Convert(err)
-		cancel()
-		return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
-	}
-	cancel()
-	return fmt.Sprintf("Successfully created secret '%s'.", secret), nil
-}
+// 	// send grpc request
+// 	_, err := client.StoreSecret(ctx, &request)
+// 	if err != nil {
+// 		s := status.Convert(err)
+// 		cancel()
+// 		return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
+// 	}
+// 	cancel()
+// 	return fmt.Sprintf("Successfully created secret '%s'.", secret), nil
+// }
 
 // ListSecrets returns a list of secrets
 func ListSecrets(conn *grpc.ClientConn, namespace string) ([]*ingress.GetSecretsResponse_Secret, error) {
@@ -130,4 +129,48 @@ func DeleteSecret(conn *grpc.ClientConn, namespace string, secret string) (strin
 	}
 	cancel()
 	return fmt.Sprintf("Successfully removed secret '%s'.", secret), nil
+}
+
+func Create(conn *grpc.ClientConn, namespace string, secret string, value string, typeOf string) (string, error) {
+
+	client, ctx, cancel := util.CreateClient(conn)
+	defer cancel()
+
+	switch typeOf {
+
+	case "secret":
+
+		// prepare request
+		request := ingress.StoreSecretRequest{
+			Namespace: &namespace,
+			Name:      &secret,
+			Data:      []byte(value),
+		}
+
+		// send grpc request
+		_, err := client.StoreSecret(ctx, &request)
+		if err != nil {
+			s := status.Convert(err)
+			cancel()
+			return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
+		}
+
+	case "registry":
+
+		// prepare request
+		request := ingress.StoreRegistryRequest{
+			Namespace: &namespace,
+			Name:      &secret,
+			Data:      []byte(value),
+		}
+
+		// send grpc request
+		_, err := client.StoreRegistry(ctx, &request)
+		if err != nil {
+			s := status.Convert(err)
+			return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
+		}
+
+		return fmt.Sprintf("Successfully created registry '%s'.", secret), nil
+	}
 }
