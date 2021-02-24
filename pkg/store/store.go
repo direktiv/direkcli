@@ -1,7 +1,6 @@
 package registries
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/vorteil/direkcli/pkg/util"
@@ -10,7 +9,14 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+type StoreRequest struct {
+	Key   string
+	Value string
+}
+
 func List(conn *grpc.ClientConn, namespace string, typeOf string) (interface{}, error) {
+	var ifc interface{}
+
 	client, ctx, cancel := util.CreateClient(conn)
 	defer cancel()
 	switch typeOf {
@@ -27,7 +33,7 @@ func List(conn *grpc.ClientConn, namespace string, typeOf string) (interface{}, 
 			return nil, fmt.Errorf("[%v] %v", s.Code(), s.Message())
 		}
 
-		return resp.Secrets, nil
+		ifc = resp.Secrets
 
 	case "registry":
 
@@ -42,10 +48,10 @@ func List(conn *grpc.ClientConn, namespace string, typeOf string) (interface{}, 
 			s := status.Convert(err)
 			return nil, fmt.Errorf("[%v] %v", s.Code(), s.Message())
 		}
-		return resp.Registries, nil
+		ifc = resp.Registries
 	}
 
-	return nil, errors.New("Should not of got here")
+	return ifc, nil
 }
 
 func Delete(conn *grpc.ClientConn, namespace string, secret string, typeOf string) (string, error) {
@@ -92,7 +98,7 @@ func Delete(conn *grpc.ClientConn, namespace string, secret string, typeOf strin
 	return success, err
 }
 
-func Create(conn *grpc.ClientConn, namespace string, secret string, value string, typeOf string) (string, error) {
+func Create(conn *grpc.ClientConn, namespace string, s *StoreRequest, typeOf string) (string, error) {
 
 	var success string
 	var err error
@@ -107,8 +113,8 @@ func Create(conn *grpc.ClientConn, namespace string, secret string, value string
 		// prepare request
 		request := ingress.StoreSecretRequest{
 			Namespace: &namespace,
-			Name:      &secret,
-			Data:      []byte(value),
+			Name:      &s.Key,
+			Data:      []byte(s.Value),
 		}
 
 		// send grpc request
@@ -118,15 +124,15 @@ func Create(conn *grpc.ClientConn, namespace string, secret string, value string
 			return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
 		}
 
-		success = fmt.Sprintf("Successfully create secret '%s'.", secret)
+		success = fmt.Sprintf("Successfully create secret '%s'.", s.Key)
 
 	case "registry":
 
 		// prepare request
 		request := ingress.StoreRegistryRequest{
 			Namespace: &namespace,
-			Name:      &secret,
-			Data:      []byte(value),
+			Name:      &s.Key,
+			Data:      []byte(s.Value),
 		}
 
 		// send grpc request
@@ -136,7 +142,7 @@ func Create(conn *grpc.ClientConn, namespace string, secret string, value string
 			return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
 		}
 
-		success = fmt.Sprintf("Successfully created registry '%s'.", secret)
+		success = fmt.Sprintf("Successfully created registry '%s'.", s.Key)
 	}
 
 	return success, err

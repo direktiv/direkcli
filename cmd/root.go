@@ -268,7 +268,12 @@ var registriesCmd = generateCmd("registries", "List, create and remove registrie
 var createRegistryCmd = generateCmd("create NAMESPACE URL USER:TOKEN", "Creates a new registry on provided namespace", "", func(cmd *cobra.Command, args []string) {
 	// replace : with a ! for args[2] ! is used in direktiv ! gets picked up by bash unfortunately
 	args[2] = strings.ReplaceAll(args[2], ":", "!")
-	success, err := store.Create(conn, args[0], args[1], args[2], "registry")
+	storeV := store.StoreRequest{
+		Key:   args[1],
+		Value: args[2],
+	}
+
+	success, err := store.Create(conn, args[0], &storeV, "registry")
 	if err != nil {
 		logger.Errorf(err.Error())
 		os.Exit(1)
@@ -314,7 +319,12 @@ var listRegistriesCmd = generateCmd("list NAMESPACE", "Returns a list of registr
 var secretsCmd = generateCmd("secrets", "List, create and delete secrets from the provided namespace", "", nil, nil)
 
 var createSecretCmd = generateCmd("create NAMESPACE KEY VALUE", "Creates a new secret on the provided namespace", "", func(cmd *cobra.Command, args []string) {
-	successMsg, err := store.Create(conn, args[0], args[1], args[2], "secret")
+	storeV := store.StoreRequest{
+		Key:   args[1],
+		Value: args[2],
+	}
+
+	successMsg, err := store.Create(conn, args[0], &storeV, "secret")
 	if err != nil {
 		logger.Errorf(err.Error())
 		os.Exit(1)
