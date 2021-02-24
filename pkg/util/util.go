@@ -15,5 +15,10 @@ func CreateClient(conn *grpc.ClientConn) (ingress.DirektivIngressClient, context
 	ctx := context.Background()
 	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(time.Second*3))
 
-	return client, ctx, cancel
+	cancelConns := func() {
+		conn.Close()
+		cancel()
+	}
+
+	return client, ctx, cancelConns
 }

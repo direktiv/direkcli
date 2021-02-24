@@ -12,7 +12,6 @@ import (
 // Logs returns all logs associated with the workflow instance ID
 func Logs(conn *grpc.ClientConn, id string) ([]*ingress.GetWorkflowInstanceLogsResponse_WorkflowInstanceLog, error) {
 	client, ctx, cancel := util.CreateClient(conn)
-	defer conn.Close()
 	defer cancel()
 	offset := int32(0)
 	limit := int32(10000)
@@ -37,7 +36,6 @@ func Logs(conn *grpc.ClientConn, id string) ([]*ingress.GetWorkflowInstanceLogsR
 // List workflow instances
 func List(conn *grpc.ClientConn, namespace string) ([]*ingress.GetWorkflowInstancesResponse_WorkflowInstance, error) {
 	client, ctx, cancel := util.CreateClient(conn)
-	defer conn.Close()
 	defer cancel()
 	// prepare request
 	request := ingress.GetWorkflowInstancesRequest{
@@ -57,7 +55,6 @@ func List(conn *grpc.ClientConn, namespace string) ([]*ingress.GetWorkflowInstan
 // Get returns a workflow instance.
 func Get(conn *grpc.ClientConn, id string) (*ingress.GetWorkflowInstanceResponse, error) {
 	client, ctx, cancel := util.CreateClient(conn)
-	defer conn.Close()
 	defer cancel()
 	// prepare request
 	request := ingress.GetWorkflowInstanceRequest{

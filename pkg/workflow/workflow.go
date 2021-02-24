@@ -13,7 +13,6 @@ import (
 // Toggle enables or disables the workflow
 func Toggle(conn *grpc.ClientConn, namespace, workflow string) (string, error) {
 	client, ctx, cancel := util.CreateClient(conn)
-	defer conn.Close()
 	defer cancel()
 
 	request := ingress.GetWorkflowByIdRequest{
@@ -51,7 +50,6 @@ func Toggle(conn *grpc.ClientConn, namespace, workflow string) (string, error) {
 // List returns an array of workflows for a given namespace
 func List(conn *grpc.ClientConn, namespace string) ([]*ingress.GetWorkflowsResponse_Workflow, error) {
 	client, ctx, cancel := util.CreateClient(conn)
-	defer conn.Close()
 	defer cancel()
 
 	// prepare request
@@ -72,7 +70,6 @@ func List(conn *grpc.ClientConn, namespace string) ([]*ingress.GetWorkflowsRespo
 // Execute a workflow using the yaml provided
 func Execute(conn *grpc.ClientConn, namespace string, id string, input string) (string, error) {
 	client, ctx, cancel := util.CreateClient(conn)
-	defer conn.Close()
 	defer cancel()
 
 	var err error
@@ -104,7 +101,6 @@ func Execute(conn *grpc.ClientConn, namespace string, id string, input string) (
 // getWorkflowUID returns the UID of a workflow
 func getWorkflowUID(conn *grpc.ClientConn, namespace, id string) (string, error) {
 	client, ctx, cancel := util.CreateClient(conn)
-	defer conn.Close()
 	defer cancel()
 	// prepare request
 	request := ingress.GetWorkflowByIdRequest{
@@ -124,7 +120,6 @@ func getWorkflowUID(conn *grpc.ClientConn, namespace, id string) (string, error)
 // Get returns a workflow definition in YAML format
 func Get(conn *grpc.ClientConn, namespace string, id string) (string, error) {
 	client, ctx, cancel := util.CreateClient(conn)
-	defer conn.Close()
 	defer cancel()
 
 	// prepare request
@@ -146,7 +141,6 @@ func Get(conn *grpc.ClientConn, namespace string, id string) (string, error) {
 // Update a workflow specified by ID.
 func Update(conn *grpc.ClientConn, namespace string, id string, filepath string) (string, error) {
 	client, ctx, cancel := util.CreateClient(conn)
-	defer conn.Close()
 	defer cancel()
 
 	b, err := ioutil.ReadFile(filepath)
@@ -178,7 +172,6 @@ func Update(conn *grpc.ClientConn, namespace string, id string, filepath string)
 // Delete an existing workflow.
 func Delete(conn *grpc.ClientConn, namespace, id string) (string, error) {
 	client, ctx, cancel := util.CreateClient(conn)
-	defer conn.Close()
 	defer cancel()
 
 	uid, err := getWorkflowUID(conn, namespace, id)
@@ -204,7 +197,6 @@ func Delete(conn *grpc.ClientConn, namespace, id string) (string, error) {
 // Add creates a new workflow
 func Add(conn *grpc.ClientConn, namespace string, filepath string) (string, error) {
 	client, ctx, cancel := util.CreateClient(conn)
-	defer conn.Close()
 	defer cancel()
 
 	b, err := ioutil.ReadFile(filepath)

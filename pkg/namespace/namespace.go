@@ -13,7 +13,6 @@ import (
 // SendEvent sends the provided Cloud Event file to the specified namespace.
 func SendEvent(conn *grpc.ClientConn, namespace string, filepath string) (string, error) {
 	client, ctx, cancel := util.CreateClient(conn)
-	defer conn.Close()
 	defer cancel()
 
 	// read Cloud Event file
@@ -41,7 +40,6 @@ func SendEvent(conn *grpc.ClientConn, namespace string, filepath string) (string
 // List returns a list of namespaces
 func List(conn *grpc.ClientConn) ([]*ingress.GetNamespacesResponse_Namespace, error) {
 	client, ctx, cancel := util.CreateClient(conn)
-	defer conn.Close()
 	defer cancel()
 
 	// prepare request
@@ -60,7 +58,6 @@ func List(conn *grpc.ClientConn) ([]*ingress.GetNamespacesResponse_Namespace, er
 // Delete a namespace
 func Delete(name string, conn *grpc.ClientConn) (string, error) {
 	client, ctx, cancel := util.CreateClient(conn)
-	defer conn.Close()
 	defer cancel()
 
 	// prepare request
@@ -81,7 +78,6 @@ func Delete(name string, conn *grpc.ClientConn) (string, error) {
 // Create a new namespace
 func Create(name string, conn *grpc.ClientConn) (string, error) {
 	client, ctx, cancel := util.CreateClient(conn)
-	defer conn.Close()
 	defer cancel()
 
 	// prepare request

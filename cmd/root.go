@@ -328,7 +328,7 @@ var removeSecretCmd = generateCmd("delete NAMESPACE KEY", "Deletes a secret from
 	logger.Printf(success)
 }, cobra.ExactArgs(2))
 
-var listSecretsCmd = generateCmd("list NAMESPACE", "Returns a lsit of secrets for the provided namespace", "", func(cmd *cobra.Command, args []string) {
+var listSecretsCmd = generateCmd("list NAMESPACE", "Returns a list of secrets for the provided namespace", "", func(cmd *cobra.Command, args []string) {
 	secrets, err := store.ListSecrets(conn, args[0])
 	if err != nil {
 		logger.Errorf(err.Error())
