@@ -12,7 +12,6 @@ import (
 // CreateRegistry a new registry
 func CreateRegistry(conn *grpc.ClientConn, namespace string, key string, value string) (string, error) {
 	client, ctx, cancel := util.CreateClient(conn)
-	defer cancel()
 
 	// prepare request
 	request := ingress.StoreRegistryRequest{
@@ -25,16 +24,16 @@ func CreateRegistry(conn *grpc.ClientConn, namespace string, key string, value s
 	_, err := client.StoreRegistry(ctx, &request)
 	if err != nil {
 		s := status.Convert(err)
+		cancel()
 		return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
 	}
-
+	cancel()
 	return fmt.Sprintf("Successfully created registry '%s'.", key), nil
 }
 
 // ListRegistries returns a list of registries
 func ListRegistries(conn *grpc.ClientConn, namespace string) ([]*ingress.GetRegistriesResponse_Registry, error) {
 	client, ctx, cancel := util.CreateClient(conn)
-	defer cancel()
 
 	// prepare request
 	request := ingress.GetRegistriesRequest{
@@ -45,17 +44,16 @@ func ListRegistries(conn *grpc.ClientConn, namespace string) ([]*ingress.GetRegi
 	resp, err := client.GetRegistries(ctx, &request)
 	if err != nil {
 		s := status.Convert(err)
+		cancel()
 		return nil, fmt.Errorf("[%v] %v", s.Code(), s.Message())
 	}
-
+	cancel()
 	return resp.Registries, nil
 }
 
 // DeleteRegistry removes a registry from a namespace
 func DeleteRegistry(conn *grpc.ClientConn, namespace string, key string) (string, error) {
 	client, ctx, cancel := util.CreateClient(conn)
-	defer cancel()
-
 	// prepare request
 	request := ingress.DeleteRegistryRequest{
 		Namespace: &namespace,
@@ -66,16 +64,16 @@ func DeleteRegistry(conn *grpc.ClientConn, namespace string, key string) (string
 	_, err := client.DeleteRegistry(ctx, &request)
 	if err != nil {
 		s := status.Convert(err)
+		cancel()
 		return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
 	}
-
+	cancel()
 	return fmt.Sprintf("Successfully removed registry '%s'.", key), nil
 }
 
 // CreateSecret creates a new secret within a namespace
 func CreateSecret(conn *grpc.ClientConn, namespace string, secret string, value string) (string, error) {
 	client, ctx, cancel := util.CreateClient(conn)
-	defer cancel()
 	// prepare request
 	request := ingress.StoreSecretRequest{
 		Namespace: &namespace,
@@ -87,16 +85,16 @@ func CreateSecret(conn *grpc.ClientConn, namespace string, secret string, value 
 	_, err := client.StoreSecret(ctx, &request)
 	if err != nil {
 		s := status.Convert(err)
+		cancel()
 		return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
 	}
-
+	cancel()
 	return fmt.Sprintf("Successfully created secret '%s'.", secret), nil
 }
 
 // ListSecrets returns a list of secrets
 func ListSecrets(conn *grpc.ClientConn, namespace string) ([]*ingress.GetSecretsResponse_Secret, error) {
 	client, ctx, cancel := util.CreateClient(conn)
-	defer cancel()
 	// prepare request
 	request := ingress.GetSecretsRequest{
 		Namespace: &namespace,
@@ -106,16 +104,16 @@ func ListSecrets(conn *grpc.ClientConn, namespace string) ([]*ingress.GetSecrets
 	resp, err := client.GetSecrets(ctx, &request)
 	if err != nil {
 		s := status.Convert(err)
+		cancel()
 		return nil, fmt.Errorf("[%v] %v", s.Code(), s.Message())
 	}
-
+	cancel()
 	return resp.Secrets, nil
 }
 
 // DeleteSecret removes a secret from a namespace
 func DeleteSecret(conn *grpc.ClientConn, namespace string, secret string) (string, error) {
 	client, ctx, cancel := util.CreateClient(conn)
-	defer cancel()
 
 	// prepare request
 	request := ingress.DeleteSecretRequest{
@@ -127,8 +125,9 @@ func DeleteSecret(conn *grpc.ClientConn, namespace string, secret string) (strin
 	_, err := client.DeleteSecret(ctx, &request)
 	if err != nil {
 		s := status.Convert(err)
+		cancel()
 		return "", fmt.Errorf("[%v] %v", s.Code(), s.Message())
 	}
-
+	cancel()
 	return fmt.Sprintf("Successfully removed secret '%s'.", secret), nil
 }
