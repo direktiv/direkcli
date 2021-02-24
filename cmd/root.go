@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/sisatech/tablewriter"
-	"github.com/spf13/cobra"
+	cobra "github.com/spf13/cobra"
 	"github.com/vorteil/direkcli/pkg/instance"
 	log "github.com/vorteil/direkcli/pkg/log"
 	"github.com/vorteil/direkcli/pkg/namespace"
@@ -22,6 +22,16 @@ var flagGRPC string
 var conn *grpc.ClientConn
 var logger elog.View
 var grpcConnection = "127.0.0.1:6666"
+
+func generateCmd(use, short, long string, fn func(cmd *cobra.Command, args []string), c cobra.PositionalArgs) *cobra.Command {
+	return &cobra.Command{
+		Use:   use,
+		Short: short,
+		Long:  long,
+		Run:   fn,
+		Args:  c,
+	}
+}
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -49,431 +59,298 @@ var rootCmd = &cobra.Command{
 }
 
 // namespaceCmd
-var namespaceCmd = &cobra.Command{
-	Use:   "namespaces",
-	Short: "List, Create and Delete namespaces",
-	Long:  ``,
-}
+var namespaceCmd = generateCmd("namespaces", "List, create and delete namespaces", "", nil, nil)
 
 // namespaceSendEventCmd
-var namespaceSendEventCmd = &cobra.Command{
-	Use:   "send NAMESPACE CLOUDEVENTPATH",
-	Short: "Sends a cloud event to a namespace",
-	Args:  cobra.ExactArgs(2),
-	Run: func(cmd *cobra.Command, args []string) {
-		success, err := namespace.SendEvent(conn, args[0], args[1])
-		if err != nil {
-			logger.Errorf(err.Error())
-			os.Exit(1)
-		}
-		logger.Printf(success)
-	},
-}
+var namespaceSendEventCmd = generateCmd("send NAMESPACE CLOUDEVENTPATH", "Send a cloud event to a namespace", "", func(cmd *cobra.Command, args []string) {
+	success, err := namespace.SendEvent(conn, args[0], args[1])
+	if err != nil {
+		logger.Errorf(err.Error())
+		os.Exit(1)
+	}
+	logger.Printf(success)
+}, cobra.ExactArgs(2))
 
 // namespaceListCmd
-var namespaceListCmd = &cobra.Command{
-	Use:   "list",
-	Short: "Returns a list of namespaces",
-	Long:  ``,
-	Args:  cobra.ExactArgs(0),
-	Run: func(cmd *cobra.Command, args []string) {
+var namespaceListCmd = generateCmd("list", "Returns a list of namespaces", "", func(cmd *cobra.Command, args []string) {
 
-		list, err := namespace.List(conn)
-		if err != nil {
-			logger.Errorf("%s", err.Error())
-			os.Exit(1)
-		}
-		if len(list) == 0 {
-			logger.Printf("No namespaces exist")
-			return
-		}
-		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"Name"})
+	list, err := namespace.List(conn)
+	if err != nil {
+		logger.Errorf("%s", err.Error())
+		os.Exit(1)
+	}
+	if len(list) == 0 {
+		logger.Printf("No namespaces exist")
+		return
+	}
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"Name"})
 
-		for _, namespace := range list {
-			table.Append([]string{
-				namespace.GetName(),
-			})
-		}
+	for _, namespace := range list {
+		table.Append([]string{
+			namespace.GetName(),
+		})
+	}
 
-		table.Render()
-	},
-}
+	table.Render()
+}, cobra.ExactArgs(0))
 
 // namespaceCreateCmd
-var namespaceCreateCmd = &cobra.Command{
-	Use:   "create NAMESPACE",
-	Short: "Create a new namespace",
-	Long:  ``,
-	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		success, err := namespace.Create(args[0], conn)
-		if err != nil {
-			logger.Errorf("%s", err.Error())
-			os.Exit(1)
-		}
-		logger.Printf(success)
-	},
-}
+var namespaceCreateCmd = generateCmd("create NAMESPACE", "Create a new namespace", "", func(cmd *cobra.Command, args []string) {
+	success, err := namespace.Create(args[0], conn)
+	if err != nil {
+		logger.Errorf("%s", err.Error())
+		os.Exit(1)
+	}
+	logger.Printf(success)
+}, cobra.ExactArgs(1))
 
 // namespaceDeleteCmd
-var namespaceDeleteCmd = &cobra.Command{
-	Use:   "delete NAMESPACE",
-	Short: "Delete a namespace",
-	Long:  ``,
-	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		success, err := namespace.Delete(args[0], conn)
-		if err != nil {
-			logger.Errorf("%s", err.Error())
-			os.Exit(1)
-		}
-		logger.Printf(success)
-	},
-}
+var namespaceDeleteCmd = generateCmd("delete NAMESPACE", "Deletes a namespace", "", func(cmd *cobra.Command, args []string) {
+	success, err := namespace.Delete(args[0], conn)
+	if err != nil {
+		logger.Errorf("%s", err.Error())
+		os.Exit(1)
+	}
+	logger.Printf(success)
+}, cobra.ExactArgs(1))
 
 // workflowCmd
-var workflowCmd = &cobra.Command{
-	Use:   "workflows",
-	Short: "List, Create, Get and Execute workflows",
-	Long:  ``,
-}
+var workflowCmd = generateCmd("workflows", "List, create, get and execute workflows", "", nil, nil)
 
 // workflowListCmd
-var workflowListCmd = &cobra.Command{
-	Use:   `list NAMESPACE`,
-	Short: "List all workflows under a namespace",
-	Args:  cobra.ExactArgs(1),
-	Long:  ``,
-	Run: func(cmd *cobra.Command, args []string) {
+var workflowListCmd = generateCmd("list NAMESPACE", "List all workflows under a namespace", "", func(cmd *cobra.Command, args []string) {
 
-		list, err := workflow.List(conn, args[0])
-		if err != nil {
-			logger.Errorf(err.Error())
-			os.Exit(1)
-		}
+	list, err := workflow.List(conn, args[0])
+	if err != nil {
+		logger.Errorf(err.Error())
+		os.Exit(1)
+	}
 
-		if len(list) == 0 {
-			logger.Printf("No workflows exist under '%s'", args[0])
-			return
-		}
+	if len(list) == 0 {
+		logger.Printf("No workflows exist under '%s'", args[0])
+		return
+	}
 
-		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"ID"})
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"ID"})
 
-		// Build string array rows
-		for _, wf := range list {
-			table.Append([]string{
-				wf.GetId(),
-			})
-		}
-		table.Render()
-	},
-}
+	// Build string array rows
+	for _, wf := range list {
+		table.Append([]string{
+			wf.GetId(),
+		})
+	}
+	table.Render()
+}, cobra.ExactArgs(1))
 
 // workflowGetCmd
-var workflowGetCmd = &cobra.Command{
-	Use:   "get NAMESPACE ID",
-	Short: "Get yaml from a workflow",
-	Args:  cobra.ExactArgs(2),
-	Long:  ``,
-	Run: func(cmd *cobra.Command, args []string) {
-		success, err := workflow.Get(conn, args[0], args[1])
-		if err != nil {
-			logger.Errorf(err.Error())
-			os.Exit(1)
-		}
-		logger.Printf(success)
-	},
-}
+var workflowGetCmd = generateCmd("get NAMESPACE ID", "Get YAML of a workflow", "", func(cmd *cobra.Command, args []string) {
+	success, err := workflow.Get(conn, args[0], args[1])
+	if err != nil {
+		logger.Errorf(err.Error())
+		os.Exit(1)
+	}
+	logger.Printf(success)
+}, cobra.ExactArgs(2))
 
 // workflowExecuteCmd
-var workflowExecuteCmd = &cobra.Command{
-	Use:   "execute NAMESPACE ID",
-	Short: "Executes workflow with given ID",
-	Args:  cobra.ExactArgs(2),
-	Long:  ``,
-	Run: func(cmd *cobra.Command, args []string) {
-		input, err := cmd.Flags().GetString("input")
-		if err != nil {
-			logger.Errorf("unable to retrieve input flag")
-			os.Exit(1)
-		}
+var workflowExecuteCmd = generateCmd("execute NAMESPACE ID", "Executes workflow with provided ID", "", func(cmd *cobra.Command, args []string) {
+	input, err := cmd.Flags().GetString("input")
+	if err != nil {
+		logger.Errorf("unable to retrieve input flag")
+		os.Exit(1)
+	}
 
-		success, err := workflow.Execute(conn, args[0], args[1], input)
-		if err != nil {
-			logger.Errorf(err.Error())
-			os.Exit(1)
-		}
+	success, err := workflow.Execute(conn, args[0], args[1], input)
+	if err != nil {
+		logger.Errorf(err.Error())
+		os.Exit(1)
+	}
 
-		logger.Printf(success)
-	},
-}
+	logger.Printf(success)
+}, cobra.ExactArgs(2))
 
-var workflowToggleCmd = &cobra.Command{
-	Use:   "toggle NAMESPACE WORKFLOW",
-	Short: "Enables or Disables the workflow provided",
-	Args:  cobra.ExactArgs(2),
-	Long:  ``,
-	Run: func(cmd *cobra.Command, args []string) {
-		success, err := workflow.Toggle(conn, args[0], args[1])
-		if err != nil {
-			logger.Errorf(err.Error())
-			os.Exit(1)
-		}
-		logger.Printf(success)
-	},
-}
+var workflowToggleCmd = generateCmd("toggle NAMESPACE WORKFLOW", "Enables or disables the workflow provided", "", func(cmd *cobra.Command, args []string) {
+	success, err := workflow.Toggle(conn, args[0], args[1])
+	if err != nil {
+		logger.Errorf(err.Error())
+		os.Exit(1)
+	}
+	logger.Printf(success)
+}, cobra.ExactArgs(2))
 
 // workflowAddCmd
-var workflowAddCmd = &cobra.Command{
-	Use:   "create NAMESPACE WORKFLOW",
-	Short: "Creates a new workflow",
-	Args:  cobra.ExactArgs(2),
-	Long:  ``,
-	Run: func(cmd *cobra.Command, args []string) {
-		// args[0] should be namespace, args[1] should be path to the workflow file
-		success, err := workflow.Add(conn, args[0], args[1])
-		if err != nil {
-			logger.Errorf(err.Error())
-			os.Exit(1)
-		}
-		logger.Printf(success)
-	},
-}
+var workflowAddCmd = generateCmd("create NAMESPACE WORKFLOW", "Creates a new workflow on provided namespace", "", func(cmd *cobra.Command, args []string) {
+	// args[0] should be namespace, args[1] should be path to the workflow file
+	success, err := workflow.Add(conn, args[0], args[1])
+	if err != nil {
+		logger.Errorf(err.Error())
+		os.Exit(1)
+	}
+	logger.Printf(success)
+}, cobra.ExactArgs(2))
 
 // workflowUpdateCmd
-var workflowUpdateCmd = &cobra.Command{
-	Use:   "update NAMESPACE ID WORKFLOW",
-	Short: "Updates an existing workflow",
-	Args:  cobra.ExactArgs(3),
-	Long:  ``,
-	Run: func(cmd *cobra.Command, args []string) {
-		success, err := workflow.Update(conn, args[0], args[1], args[2])
-		if err != nil {
-			logger.Errorf(err.Error())
-			os.Exit(1)
-		}
-		logger.Printf(success)
-	},
-}
+var workflowUpdateCmd = generateCmd("update NAMESPACE ID WORKFLOW", "Updates an existing workflow", "", func(cmd *cobra.Command, args []string) {
+	success, err := workflow.Update(conn, args[0], args[1], args[2])
+	if err != nil {
+		logger.Errorf(err.Error())
+		os.Exit(1)
+	}
+	logger.Printf(success)
+}, cobra.ExactArgs(3))
 
 // workflowDeleteCmd
-var workflowDeleteCmd = &cobra.Command{
-	Use:   "delete NAMESPACE ID",
-	Short: "Deletes an existing workflow",
-	Args:  cobra.ExactArgs(2),
-	Long:  ``,
-	Run: func(cmd *cobra.Command, args []string) {
-		success, err := workflow.Delete(conn, args[0], args[1])
-		if err != nil {
-			logger.Errorf(err.Error())
-			os.Exit(1)
-		}
-		logger.Printf(success)
-	},
-}
+var workflowDeleteCmd = generateCmd("delete NAMESPACE ID", "Deletes an existing workflow", "", func(cmd *cobra.Command, args []string) {
+	success, err := workflow.Delete(conn, args[0], args[1])
+	if err != nil {
+		logger.Errorf(err.Error())
+		os.Exit(1)
+	}
+	logger.Printf(success)
+}, cobra.ExactArgs(2))
 
 // instanceCmd
-var instanceCmd = &cobra.Command{
-	Use:   "instances",
-	Short: "List, Get and Retrieve Logs for instances",
-	Long:  ``,
-}
+var instanceCmd = generateCmd("instances", "List, get and retrieve logs for instances", "", nil, nil)
 
-var instanceGetCmd = &cobra.Command{
-	Use:   "get ID",
-	Short: "Get details about a workflow instance",
-	Args:  cobra.ExactArgs(1),
-	Long:  ``,
-	Run: func(cmd *cobra.Command, args []string) {
-		resp, err := instance.Get(conn, args[0])
-		if err != nil {
-			logger.Errorf(err.Error())
-			os.Exit(1)
-		}
-		logger.Printf("ID: %s", resp.GetId())
-		logger.Printf("Input: %s", string(resp.GetInput()))
-		logger.Printf("Output: %s", string(resp.GetOutput()))
-	},
-}
+var instanceGetCmd = generateCmd("get ID", "Get details about a workflow instance", "", func(cmd *cobra.Command, args []string) {
+	resp, err := instance.Get(conn, args[0])
+	if err != nil {
+		logger.Errorf(err.Error())
+		os.Exit(1)
+	}
+	logger.Printf("ID: %s", resp.GetId())
+	logger.Printf("Input: %s", string(resp.GetInput()))
+	logger.Printf("Output: %s", string(resp.GetOutput()))
+}, cobra.ExactArgs(1))
 
-var instanceLogsCmd = &cobra.Command{
-	Use:   "logs ID",
-	Short: "Grabs all logs for the instance ID provided",
-	Long:  ``,
-	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		logs, err := instance.Logs(conn, args[0])
-		if err != nil {
-			logger.Errorf(err.Error())
-			os.Exit(1)
-		}
-		for _, log := range logs {
-			fmt.Printf("%s", log.GetMessage())
-		}
-	},
-}
+var instanceLogsCmd = generateCmd("logs ID", "Grabs all logs for the instance ID provided", "", func(cmd *cobra.Command, args []string) {
+	logs, err := instance.Logs(conn, args[0])
+	if err != nil {
+		logger.Errorf(err.Error())
+		os.Exit(1)
+	}
+	for _, log := range logs {
+		fmt.Printf("%s", log.GetMessage())
+	}
+}, cobra.ExactArgs(1))
 
-var instanceListCmd = &cobra.Command{
-	Use:   "list NAMESPACE",
-	Short: "List all workflow instances in a namespace",
-	Long:  ``,
-	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		list, err := instance.List(conn, args[0])
-		if err != nil {
-			logger.Errorf(err.Error())
-			os.Exit(1)
-		}
+var instanceListCmd = generateCmd("list NAMESPACE", "List all workflow instances from the provided namespace", "", func(cmd *cobra.Command, args []string) {
+	list, err := instance.List(conn, args[0])
+	if err != nil {
+		logger.Errorf(err.Error())
+		os.Exit(1)
+	}
 
-		if len(list) == 0 {
-			logger.Printf("No instances exist under '%s'", args[0])
-			return
-		}
+	if len(list) == 0 {
+		logger.Printf("No instances exist under '%s'", args[0])
+		return
+	}
 
-		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"ID", "Status"})
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"ID", "Status"})
 
-		// Build string array rows
-		for _, instance := range list {
-			table.Append([]string{
-				instance.GetId(),
-				instance.GetStatus(),
-			})
-		}
-		table.Render()
-	},
-}
+	// Build string array rows
+	for _, instance := range list {
+		table.Append([]string{
+			instance.GetId(),
+			instance.GetStatus(),
+		})
+	}
+	table.Render()
+}, cobra.ExactArgs(1))
 
 //registriesCmd
-var registriesCmd = &cobra.Command{
-	Use:   "registries",
-	Short: "List, Create and Remove registries from a Namespace",
-}
+var registriesCmd = generateCmd("registries", "List, create and remove registries from provided namespace", "", nil, nil)
 
-var createRegistryCmd = &cobra.Command{
-	Use:   "create NAMESPACE URL USER:TOKEN",
-	Short: "Creates a registry under a namespace",
-	Args:  cobra.ExactArgs(3),
-	Run: func(cmd *cobra.Command, args []string) {
-		// replace : with a ! for args[2] ! is used in direktiv ! gets picked up by bash unfortunately
-		args[2] = strings.ReplaceAll(args[2], ":", "!")
-		success, err := store.CreateRegistry(conn, args[0], args[1], args[2])
-		if err != nil {
-			logger.Errorf(err.Error())
-			os.Exit(1)
-		}
-		logger.Printf(success)
-	},
-}
+var createRegistryCmd = generateCmd("create NAMESPACE URL USER:TOKEN", "Creates a new registry on provided namespace", "", func(cmd *cobra.Command, args []string) {
+	// replace : with a ! for args[2] ! is used in direktiv ! gets picked up by bash unfortunately
+	args[2] = strings.ReplaceAll(args[2], ":", "!")
+	success, err := store.CreateRegistry(conn, args[0], args[1], args[2])
+	if err != nil {
+		logger.Errorf(err.Error())
+		os.Exit(1)
+	}
+	logger.Printf(success)
+}, cobra.ExactArgs(3))
 
-var removeRegistryCmd = &cobra.Command{
-	Use:   "delete NAMESPACE URL",
-	Short: "Removes the registry from the namespace with provided URL",
-	Args:  cobra.ExactArgs(2),
-	Run: func(cmd *cobra.Command, args []string) {
-		success, err := store.DeleteRegistry(conn, args[0], args[1])
-		if err != nil {
-			logger.Errorf(err.Error())
-			os.Exit(1)
-		}
-		logger.Printf(success)
-	},
-}
+var removeRegistryCmd = generateCmd("delete NAMESPACE URL", "Deletes a registry from the provided namespace", "", func(cmd *cobra.Command, args []string) {
+	success, err := store.DeleteRegistry(conn, args[0], args[1])
+	if err != nil {
+		logger.Errorf(err.Error())
+		os.Exit(1)
+	}
+	logger.Printf(success)
+}, cobra.ExactArgs(2))
 
-var listRegistriesCmd = &cobra.Command{
-	Use:   "list NAMESPACE",
-	Short: "Returns a list of registries for a namespace",
-	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		registries, err := store.ListRegistries(conn, args[0])
-		if err != nil {
-			logger.Errorf(err.Error())
-			os.Exit(1)
-		}
-		if len(registries) == 0 {
-			logger.Printf("No registries exist under '%s'", args[0])
-			return
-		}
+var listRegistriesCmd = generateCmd("list NAMESPACE", "Returns a list of registries from the provided namespace", "", func(cmd *cobra.Command, args []string) {
+	registries, err := store.ListRegistries(conn, args[0])
+	if err != nil {
+		logger.Errorf(err.Error())
+		os.Exit(1)
+	}
+	if len(registries) == 0 {
+		logger.Printf("No registries exist under '%s'", args[0])
+		return
+	}
 
-		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"Registry"})
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"Registry"})
 
-		// Build string array rows
-		for _, registry := range registries {
-			table.Append([]string{
-				registry.GetName(),
-			})
-		}
-		table.Render()
-	},
-}
+	// Build string array rows
+	for _, registry := range registries {
+		table.Append([]string{
+			registry.GetName(),
+		})
+	}
+	table.Render()
+}, cobra.ExactArgs(1))
 
 //secretsCmd
-var secretsCmd = &cobra.Command{
-	Use:   "secrets",
-	Short: "List, Create and Remove Secrets from a Namespace",
-	Long:  "",
-}
+var secretsCmd = generateCmd("secrets", "List, create and delete secrets from the provided namespace", "", nil, nil)
 
-var createSecretCmd = &cobra.Command{
-	Use:   "create NAMESPACE KEY VALUE",
-	Short: "Creates a new secret for direktiv",
-	Long:  "",
-	Args:  cobra.ExactArgs(3),
-	Run: func(cmd *cobra.Command, args []string) {
-		successMsg, err := store.CreateSecret(conn, args[0], args[1], args[2])
-		if err != nil {
-			logger.Errorf(err.Error())
-			os.Exit(1)
-		}
-		logger.Printf(successMsg)
-	},
-}
+var createSecretCmd = generateCmd("create NAMESPACE KEY VALUE", "Creates a new secret on the provided namespace", "", func(cmd *cobra.Command, args []string) {
+	successMsg, err := store.CreateSecret(conn, args[0], args[1], args[2])
+	if err != nil {
+		logger.Errorf(err.Error())
+		os.Exit(1)
+	}
+	logger.Printf(successMsg)
+}, cobra.ExactArgs(3))
 
-var removeSecretCmd = &cobra.Command{
-	Use:   "delete NAMESPACE KEY",
-	Short: "Removes a secret from a namespace",
-	Args:  cobra.ExactArgs(2),
-	Run: func(cmd *cobra.Command, args []string) {
-		success, err := store.DeleteSecret(conn, args[0], args[1])
-		if err != nil {
-			logger.Errorf(err.Error())
-			os.Exit(1)
-		}
-		logger.Printf(success)
-	},
-}
+var removeSecretCmd = generateCmd("delete NAMESPACE KEY", "Deletes a secret from the provided namespace", "", func(cmd *cobra.Command, args []string) {
+	success, err := store.DeleteSecret(conn, args[0], args[1])
+	if err != nil {
+		logger.Errorf(err.Error())
+		os.Exit(1)
+	}
+	logger.Printf(success)
+}, cobra.ExactArgs(2))
 
-var listSecretsCmd = &cobra.Command{
-	Use:   "list NAMESPACE",
-	Short: "Returns a list of secrets for a namespace",
-	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		secrets, err := store.ListSecrets(conn, args[0])
-		if err != nil {
-			logger.Errorf(err.Error())
-			os.Exit(1)
-		}
+var listSecretsCmd = generateCmd("list NAMESPACE", "Returns a lsit of secrets for the provided namespace", "", func(cmd *cobra.Command, args []string) {
+	secrets, err := store.ListSecrets(conn, args[0])
+	if err != nil {
+		logger.Errorf(err.Error())
+		os.Exit(1)
+	}
 
-		if len(secrets) == 0 {
-			logger.Printf("No secrets exist under '%s'", args[0])
-			return
-		}
+	if len(secrets) == 0 {
+		logger.Printf("No secrets exist under '%s'", args[0])
+		return
+	}
 
-		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"Secret"})
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"Secret"})
 
-		// Build string array rows
-		for _, secret := range secrets {
-			table.Append([]string{
-				secret.GetName(),
-			})
-		}
-		table.Render()
-	},
-}
+	// Build string array rows
+	for _, secret := range secrets {
+		table.Append([]string{
+			secret.GetName(),
+		})
+	}
+	table.Render()
+}, cobra.ExactArgs(1))
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
